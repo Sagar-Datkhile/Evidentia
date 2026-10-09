@@ -68,12 +68,16 @@ npm test
 ```
 src/
 ├── app/
-│   ├── layout.tsx                # Root layout with Manrope & Inter fonts, metadata
+│   ├── layout.tsx                # Root layout with Manrope & Inter fonts, AuthProvider
 │   ├── page.tsx                  # Public editorial landing page
 │   ├── auth/
-│   │   ├── login/page.tsx        # Supabase auth login
-│   │   └── register/page.tsx     # Account registration
-│   ├── dashboard/page.tsx        # Role-aware dashboard redirection / hub
+│   │   ├── sign-in/page.tsx      # Supabase email/password & Google OAuth sign-in
+│   │   ├── sign-up/page.tsx      # User registration with international phone & pending role
+│   │   ├── forgot-password/page.tsx # Password recovery dispatch
+│   │   ├── callback/route.ts     # OAuth session exchange & profile synchronization
+│   │   └── login/page.tsx        # Legacy redirect to sign-in
+│   ├── profile/page.tsx          # Authenticated user profile and permitted field updates
+│   ├── dashboard/page.tsx        # Role-aware dashboard hub
 │   ├── cases/
 │   │   ├── page.tsx              # Case management docket list
 │   │   ├── new/page.tsx          # Create new case
@@ -133,9 +137,9 @@ src/
 ## 4. Current Status & Progress Tracking
 
 - **Phase 0 (Repository Audit & Product Plan):** COMPLETE
-- **Phase 1 (Design System & Navigation):** In Progress
-- **Phase 2 (Supabase Security Foundation):** Pending
-- **Phase 3 (Evidence Registration & Version Commits):** Pending
+- **Phase 1 (Design System & Navigation Shell):** COMPLETE (Editorial Navbar, Hero, Auth Buttons)
+- **Phase 2 (Supabase Auth & Database Profiles):** COMPLETE (SSR Clients, Middleware, Triggers, RLS, Pending Role)
+- **Phase 3 (Evidence Registration & Version Commits):** In Progress
 - **Phase 4 (Tamper Detection & Diff Engine):** Pending
 - **Phase 5 (Passkeys & Step-Up Auth):** Pending
 - **Phase 6 (Cryptographic Attestation & Merkle Engine):** Pending

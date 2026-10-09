@@ -1,47 +1,58 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Shield,
   FileCheck,
   FolderGit2,
-  GitBranch,
   ArrowRightLeft,
   FileText,
-  UserCheck,
   Menu,
   X,
   ChevronDown,
-  Lock,
+  User as UserIcon,
+  LayoutDashboard,
+  LogOut,
+  AlertCircle,
+  Plus,
 } from "lucide-react";
-import { DEMO_USERS } from "@/lib/data/store";
-import { UserProfile, UserRole } from "@/lib/supabase/types";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { formatRoleLabel } from "@/lib/supabase/types";
+
+function getInitials(name?: string | null, email?: string | null): string {
+  if (name && name.trim().length > 0) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  if (email && email.trim().length > 0) {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return "EO";
+}
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, profile, isLoading, isPending, canRegister, signOut } = useAuth();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(DEMO_USERS.police);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close dropdown on outside click
   useEffect(() => {
-    // Check if user is stored in local session
-    const saved = localStorage.getItem("evidentia_active_user");
-    if (saved && DEMO_USERS[saved]) {
-      setCurrentUser(DEMO_USERS[saved]);
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
     }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const switchUser = (roleKey: string) => {
-    const user = DEMO_USERS[roleKey];
-    if (user) {
-      setCurrentUser(user);
-      localStorage.setItem("evidentia_active_user", roleKey);
-      setRoleDropdownOpen(false);
-      window.dispatchEvent(new CustomEvent("evidentia_user_changed", { detail: user }));
-    }
-  };
 
   const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: Shield },
@@ -50,6 +61,17 @@ export function Navbar() {
     { href: "/custody", label: "Custody", icon: ArrowRightLeft },
     { href: "/reports", label: "Reports & Audit", icon: FileText },
   ];
+
+  const handleNavClick = (href: string, e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      router.push(`/auth/sign-in?next=${encodeURIComponent(href)}`);
+    }
+  };
+
+  const displayName = profile?.fullName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Authenticated User";
+  const roleLabel = formatRoleLabel(profile?.role);
+  const initials = getInitials(displayName, user?.email);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#E5E5E7] bg-[#F9F9FA]/90 backdrop-blur-md transition-all">
@@ -79,6 +101,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  onClick={(e) => handleNavClick(link.href, e)}
                   className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                     isActive
                       ? "bg-[#111111] text-[#FFFFFF]"
@@ -93,64 +116,116 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* Right Action: Active Role Switcher & Auth */}
+        {/* Right Section: Auth & Actions */}
         <div className="hidden sm:flex sm:items-center sm:gap-3">
-          {/* Role Switcher Pill */}
-          <div className="relative">
-            <button
-              onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-              className="flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-2.5 py-1.5 text-xs font-medium text-[#111111] shadow-subtle transition-all hover:border-[#111111]"
-              title="Switch demo persona to test role-scoped permissions"
+          {!user ? (
+            /* Unauthenticated State: Sign In Button Only */
+            <Link
+              href="/auth/sign-in"
+              className="flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626]"
             >
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <div className="flex flex-col text-left">
-                <span className="font-semibold text-[11px] leading-tight text-[#111111]">
-                  {currentUser.fullName}
-                </span>
-                <span className="font-mono text-[9px] text-[#6B6B73]">
-                  {currentUser.role}
-                </span>
-              </div>
-              <ChevronDown className="h-3 w-3 text-[#6B6B73]" />
-            </button>
+              Sign In
+            </Link>
+          ) : (
+            /* Authenticated State: Profile Dropdown & Register Evidence if authorized */
+            <>
+              {canRegister && (
+                <Link
+                  href="/evidence/new"
+                  className="flex items-center gap-1.5 rounded-md bg-[#111111] px-3 py-1.5 text-xs font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Register Evidence
+                </Link>
+              )}
 
-            {/* Dropdown Menu */}
-            {roleDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-lg border border-[#E5E5E7] bg-[#FFFFFF] p-1.5 shadow-editorial">
-                <div className="px-2.5 py-1.5 border-b border-[#F1F1F3] mb-1">
-                  <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B6B73]">
-                    Switch Judicial Persona
-                  </p>
-                </div>
-                {Object.entries(DEMO_USERS).map(([key, u]) => (
-                  <button
-                    key={key}
-                    onClick={() => switchUser(key)}
-                    className={`w-full flex items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-xs transition-colors ${
-                      currentUser.id === u.id
-                        ? "bg-[#F1F1F3] text-[#111111] font-medium"
-                        : "text-[#6B6B73] hover:bg-[#F9F9FA] hover:text-[#111111]"
-                    }`}
-                  >
-                    <UserCheck className={`h-3.5 w-3.5 mt-0.5 ${currentUser.id === u.id ? "text-[#111111]" : "text-[#AEAEB2]"}`} />
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-semibold text-[#111111]">{u.fullName}</span>
-                      <span className="text-[10px] text-[#6B6B73]">{u.role}</span>
-                      <span className="text-[9px] font-mono text-[#8E8E93]">{u.organizationName}</span>
+              {/* Authenticated User Profile Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-2.5 py-1.5 text-xs font-medium text-[#111111] shadow-subtle transition-all hover:border-[#111111]"
+                  aria-expanded={profileDropdownOpen}
+                  aria-haspopup="true"
+                >
+                  {/* Avatar or Initials */}
+                  {profile?.avatarUrl ? (
+                    <div className="relative h-6 w-6 overflow-hidden rounded-full border border-[#E5E5E7]">
+                      <Image
+                        src={profile.avatarUrl}
+                        alt={displayName}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                  ) : (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#111111] text-[10px] font-semibold text-[#FFFFFF]">
+                      {initials}
+                    </div>
+                  )}
 
-          {/* Quick Action: Register Evidence */}
-          <Link
-            href="/evidence/new"
-            className="flex items-center gap-1.5 rounded-md bg-[#111111] px-3 py-1.5 text-xs font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626]"
-          >
-            + Register Evidence
-          </Link>
+                  <div className="flex flex-col text-left">
+                    <span className="max-w-[130px] truncate font-semibold text-[11px] leading-tight text-[#111111]">
+                      {displayName}
+                    </span>
+                    <span className="font-mono text-[9px] text-[#6B6B73]">
+                      {roleLabel}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-3 w-3 text-[#6B6B73]" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 rounded-lg border border-[#E5E5E7] bg-[#FFFFFF] p-1.5 shadow-editorial z-50">
+                    <div className="border-b border-[#F1F1F3] px-3 py-2.5 mb-1">
+                      <p className="font-semibold text-xs text-[#111111] truncate">{displayName}</p>
+                      <p className="text-[10px] text-[#6B6B73] truncate font-mono mt-0.5">{user.email}</p>
+                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E7] bg-[#F9F9FA] px-2 py-0.5 text-[10px] font-mono text-[#111111]">
+                        <span className={`h-1.5 w-1.5 rounded-full ${isPending ? "bg-amber-500" : "bg-emerald-500"}`} />
+                        <span>{roleLabel}</span>
+                      </div>
+                      {isPending && (
+                        <p className="mt-1.5 text-[10px] text-amber-700 leading-tight">
+                          Awaiting administrative verification for evidence operations.
+                        </p>
+                      )}
+                    </div>
+
+                    <Link
+                      href="/profile"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
+                    >
+                      <UserIcon className="h-3.5 w-3.5 text-[#6B6B73]" />
+                      <span>My Profile</span>
+                    </Link>
+
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
+                    >
+                      <LayoutDashboard className="h-3.5 w-3.5 text-[#6B6B73]" />
+                      <span>Dashboard</span>
+                    </Link>
+
+                    <div className="my-1 border-t border-[#F1F1F3]" />
+
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        signOut();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="h-3.5 w-3.5 text-red-600" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -168,33 +243,69 @@ export function Navbar() {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="border-b border-[#E5E5E7] bg-[#FFFFFF] px-4 py-4 md:hidden animate-in slide-in-from-top-2">
-          {/* Active User Card on Mobile */}
-          <div className="mb-4 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase text-[#6B6B73]">Current Role</span>
-              <span className="text-[10px] font-mono text-emerald-600 font-semibold">Active Session</span>
-            </div>
-            <p className="text-xs font-bold text-[#111111]">{currentUser.fullName}</p>
-            <p className="text-[11px] text-[#6B6B73]">{currentUser.role} &middot; {currentUser.organizationName}</p>
-            <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-              {Object.entries(DEMO_USERS).map(([key, u]) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    switchUser(key);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`rounded px-2 py-1 text-[10px] font-mono text-left border ${
-                    currentUser.id === u.id
-                      ? "border-[#111111] bg-[#111111] text-[#FFFFFF]"
-                      : "border-[#E5E5E7] bg-[#FFFFFF] text-[#6B6B73]"
-                  }`}
+          {user ? (
+            /* Authenticated User Summary on Mobile */
+            <div className="mb-4 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] p-3">
+              <div className="flex items-center gap-3">
+                {profile?.avatarUrl ? (
+                  <div className="relative h-9 w-9 overflow-hidden rounded-full border border-[#E5E5E7]">
+                    <Image
+                      src={profile.avatarUrl}
+                      alt={displayName}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#111111] text-xs font-semibold text-[#FFFFFF]">
+                    {initials}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-[#111111] truncate">{displayName}</p>
+                  <p className="text-[11px] text-[#6B6B73] font-mono truncate">{roleLabel}</p>
+                  <p className="text-[10px] text-[#8E8E93] truncate">{user.email}</p>
+                </div>
+              </div>
+
+              {isPending && (
+                <div className="mt-2.5 flex items-start gap-1.5 rounded border border-amber-200 bg-amber-50 p-2 text-[10px] text-amber-800">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
+                  <span>Account pending approval. Privileged operations are restricted.</span>
+                </div>
+              )}
+
+              <div className="mt-3 flex gap-2">
+                <Link
+                  href="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 rounded border border-[#E5E5E7] bg-[#FFFFFF] py-1.5 text-center text-xs font-medium text-[#111111]"
                 >
-                  {u.role.replace(" Officer", "").replace(" Analyst", "")}
+                  My Profile
+                </Link>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    signOut();
+                  }}
+                  className="flex-1 rounded border border-red-200 bg-red-50 py-1.5 text-center text-xs font-medium text-red-700"
+                >
+                  Sign Out
                 </button>
-              ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Unauthenticated Mobile CTA */
+            <div className="mb-4">
+              <Link
+                href="/auth/sign-in"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex w-full items-center justify-center rounded-md bg-[#111111] py-2.5 text-xs font-semibold text-[#FFFFFF] shadow-subtle"
+              >
+                Sign In
+              </Link>
+            </div>
+          )}
 
           {/* Navigation Links */}
           <div className="space-y-1">
@@ -205,7 +316,10 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => {
+                    handleNavClick(link.href, e);
+                    setMobileMenuOpen(false);
+                  }}
                   className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                     isActive
                       ? "bg-[#111111] text-[#FFFFFF]"
@@ -217,13 +331,16 @@ export function Navbar() {
                 </Link>
               );
             })}
-            <Link
-              href="/evidence/new"
-              onClick={() => setMobileMenuOpen(false)}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md bg-[#111111] py-2.5 text-xs font-semibold text-[#FFFFFF]"
-            >
-              + Register New Evidence
-            </Link>
+
+            {user && canRegister && (
+              <Link
+                href="/evidence/new"
+                onClick={() => setMobileMenuOpen(false)}
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md bg-[#111111] py-2.5 text-xs font-semibold text-[#FFFFFF]"
+              >
+                + Register New Evidence
+              </Link>
+            )}
           </div>
         </div>
       )}

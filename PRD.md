@@ -48,10 +48,13 @@ EVIDENTIA enforces role-based access control (RBAC) backed by Supabase Auth and 
 - Interactive features: Problem vs. Solution breakdown, Cryptographic Trust Layers, Role-Based Workflows, Security Architecture summary, and Clear CTA.
 
 ### 3.2 Authentication & Role Management
-- Supabase Auth (Email / Password + Session JWT).
-- Role-based dashboard redirect (Admin, Police, Forensic Analyst, Prosecutor).
-- Defense-in-depth authorization: server-side verification in Route Handlers + PostgreSQL RLS.
-- No user self-promotion; strict organization and case assignment checks.
+- **Supabase Auth & Session Management:** Integrated via `@supabase/ssr` with secure cookie-based session persistence, refresh token rotation, and server-side route protection.
+- **Multi-Provider Support:** Email/Password authentication and Google OAuth (`signInWithOAuth`) with official multicolor Google branding.
+- **Account Registration & Intake:** Collects Full Name, Email Address, international format validated Phone Number (E.164 compliant), and password meeting Supabase strength policy.
+- **Safe Default Role:** All newly registered users (via email/password or Google OAuth) receive an initial `pending` role awaiting administrative verification.
+- **Database-Backed RBAC:** `profiles` table stores judicial identities with strict PostgreSQL Row Level Security (RLS) and triggers (`protect_profile_role`) prohibiting self-elevation.
+- **Privileged Roles:** `police` (investigative intake & evidence registration), `forensic` (laboratory analysis & version creation), `prosecutor` (judicial inspection & passport export), and `admin` (user governance & role provisioning).
+- **Password Recovery:** Email-based recovery flow (`/auth/forgot-password`) utilizing Supabase Auth recovery tokens.
 
 ### 3.3 Case Management System
 - Case registration with official case number, court jurisdiction, incident date, and status (`Active`, `Under Analysis`, `In Trial`, `Archived`).

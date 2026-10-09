@@ -24,21 +24,28 @@ import {
   evidenceStore,
   DEMO_USERS,
 } from "@/lib/data/store";
-import { UserProfile, Case, EvidenceItem, CustodyTransfer, CustodyEvent } from "@/lib/supabase/types";
+import { UserProfile, Case, EvidenceItem, CustodyTransfer, CustodyEvent, formatRoleLabel } from "@/lib/supabase/types";
 import { formatShortHash } from "@/lib/crypto/sha256";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function DashboardPage() {
-  const [activeUser, setActiveUser] = useState<UserProfile>(DEMO_USERS.police);
+  const { user, profile, isPending, canRegister } = useAuth();
+  const [activeUser, setActiveUser] = useState<UserProfile>(() => {
+    return profile || DEMO_USERS.police;
+  });
   const [cases, setCases] = useState<Case[]>([]);
   const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([]);
   const [transfers, setTransfers] = useState<CustodyTransfer[]>([]);
   const [custodyEvents, setCustodyEvents] = useState<CustodyEvent[]>([]);
 
   useEffect(() => {
-    // Load current active user from localStorage or default
-    const saved = localStorage.getItem("evidentia_active_user");
-    if (saved && DEMO_USERS[saved]) {
-      setActiveUser(DEMO_USERS[saved]);
+    if (profile) {
+      setActiveUser(profile);
+    } else {
+      const saved = localStorage.getItem("evidentia_active_user");
+      if (saved && DEMO_USERS[saved]) {
+        setActiveUser(DEMO_USERS[saved]);
+      }
     }
 
     const refreshData = () => {
@@ -80,7 +87,7 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs uppercase tracking-wider text-[#6B6B73]">
-                Role Dashboard &middot; {activeUser.role}
+                Role Dashboard &middot; {formatRoleLabel(activeUser.role)}
               </span>
               <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-800 border border-emerald-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -91,19 +98,21 @@ export default function DashboardPage() {
               Welcome, {activeUser.fullName}
             </h1>
             <p className="mt-1 text-xs text-[#6B6B73]">
-              {activeUser.organizationName} &middot; Badge #{activeUser.badgeNumber}
+              {activeUser.organizationName || "Judicial Operations"} {activeUser.badgeNumber ? `· Badge #${activeUser.badgeNumber}` : `· ${activeUser.email}`}
             </p>
           </div>
 
           {/* Quick Context Action */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <Link
-              href="/evidence/new"
-              className="flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626]"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Register Evidence
-            </Link>
+            {canRegister && (
+              <Link
+                href="/evidence/new"
+                className="flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Register Evidence
+              </Link>
+            )}
             <Link
               href="/cases"
               className="flex items-center gap-1.5 rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-4 py-2 text-xs font-medium text-[#111111] shadow-subtle transition-all hover:border-[#111111]"
@@ -113,6 +122,12 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {isPending && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            <span className="font-semibold">Authorization Pending:</span> Your judicial dossier has been created and is awaiting role assignment. Evidence registration and modification workflows are restricted until an administrator assigns a verified role.
+          </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------------- */}

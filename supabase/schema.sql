@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     full_name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('Admin', 'Police Officer', 'Forensic Analyst', 'Public Prosecutor')),
+    phone TEXT,
+    role TEXT NOT NULL DEFAULT 'pending' CHECK (role IN ('pending', 'police', 'forensic', 'prosecutor', 'admin', 'Admin', 'Police Officer', 'Forensic Analyst', 'Public Prosecutor')),
     organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
     badge_number TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -361,3 +362,71 @@ DROP TRIGGER IF EXISTS trg_immutable_evidence_commits ON evidence_commits;
 CREATE TRIGGER trg_immutable_evidence_commits
     BEFORE UPDATE OR DELETE ON evidence_commits
     FOR EACH ROW EXECUTE FUNCTION prevent_immutable_record_modification();
+
+-- Automatic Profile Provisioning on User Registration
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+DECLARE
+    assigned_name TEXT;
+    assigned_phone TEXT;
+    assigned_avatar TEXT;
+BEGIN
+    assigned_name := COALESCE(
+        NEW.raw_user_meta_data->>'full_name',
+        NEW.raw_user_meta_data->>'name',
+        split_part(NEW.email, '@', 1)
+    );
+    assigned_phone := NEW.raw_user_meta_data->>'phone';
+    assigned_avatar := NEW.raw_user_meta_data->>'avatar_url';
+
+    INSERT INTO public.profiles (
+        id, email, full_name, phone, avatar_url, role, is_active, created_at, updated_at
+    )
+    VALUES (
+        NEW.id, NEW.email, assigned_name, assigned_phone, assigned_avatar, 'pending', true, timezone('utc', now()), timezone('utc', now())
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name),
+        phone = COALESCE(public.profiles.phone, EXCLUDED.phone),
+        avatar_url = COALESCE(public.profiles.avatar_url, EXCLUDED.avatar_url),
+        updated_at = timezone('utc', now());
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Role Protection: Non-admins cannot alter their own role
+CREATE OR REPLACE FUNCTION public.protect_profile_role()
+RETURNS TRIGGER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    IF (OLD.role IS NOT DISTINCT FROM NEW.role) THEN
+        NEW.updated_at = timezone('utc', now());
+        RETURN NEW;
+    END IF;
+
+    SELECT role INTO caller_role
+    FROM public.profiles
+    WHERE id = auth.uid();
+
+    IF caller_role NOT IN ('admin', 'Admin') THEN
+        RAISE EXCEPTION 'Unauthorized: Users cannot elevate or alter their own authorization role.';
+    END IF;
+
+    NEW.updated_at = timezone('utc', now());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_protect_profile_role ON public.profiles;
+CREATE TRIGGER trg_protect_profile_role
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.protect_profile_role();
+

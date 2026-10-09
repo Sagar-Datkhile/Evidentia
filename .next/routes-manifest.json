@@ -1,1 +1,182 @@
-{"version":3,"caseSensitive":false,"basePath":"","rewrites":{"beforeFiles":[],"afterFiles":[],"fallback":[]},"redirects":[{"source":"/:path+/","destination":"/:path+","permanent":true,"internal":true,"regex":"^(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))\\/$"}],"headers":[]}
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/evidence/[id]/verify",
+      "regex": "^/api/evidence/([^/]+?)/verify(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/evidence/(?<nxtPid>[^/]+?)/verify(?:/)?$"
+    },
+    {
+      "page": "/cases/[caseId]",
+      "regex": "^/cases/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPcaseId": "nxtPcaseId"
+      },
+      "namedRegex": "^/cases/(?<nxtPcaseId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/evidence/[evidenceId]/compare",
+      "regex": "^/evidence/([^/]+?)/compare(?:/)?$",
+      "routeKeys": {
+        "nxtPevidenceId": "nxtPevidenceId"
+      },
+      "namedRegex": "^/evidence/(?<nxtPevidenceId>[^/]+?)/compare(?:/)?$"
+    },
+    {
+      "page": "/evidence/[evidenceId]/passport",
+      "regex": "^/evidence/([^/]+?)/passport(?:/)?$",
+      "routeKeys": {
+        "nxtPevidenceId": "nxtPevidenceId"
+      },
+      "namedRegex": "^/evidence/(?<nxtPevidenceId>[^/]+?)/passport(?:/)?$"
+    },
+    {
+      "page": "/evidence/[evidenceId]/timeline",
+      "regex": "^/evidence/([^/]+?)/timeline(?:/)?$",
+      "routeKeys": {
+        "nxtPevidenceId": "nxtPevidenceId"
+      },
+      "namedRegex": "^/evidence/(?<nxtPevidenceId>[^/]+?)/timeline(?:/)?$"
+    },
+    {
+      "page": "/evidence/[evidenceId]/verify",
+      "regex": "^/evidence/([^/]+?)/verify(?:/)?$",
+      "routeKeys": {
+        "nxtPevidenceId": "nxtPevidenceId"
+      },
+      "namedRegex": "^/evidence/(?<nxtPevidenceId>[^/]+?)/verify(?:/)?$"
+    },
+    {
+      "page": "/evidence/[evidenceId]/versions",
+      "regex": "^/evidence/([^/]+?)/versions(?:/)?$",
+      "routeKeys": {
+        "nxtPevidenceId": "nxtPevidenceId"
+      },
+      "namedRegex": "^/evidence/(?<nxtPevidenceId>[^/]+?)/versions(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/auth/callback",
+      "regex": "^/auth/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/callback(?:/)?$"
+    },
+    {
+      "page": "/auth/forgot-password",
+      "regex": "^/auth/forgot\\-password(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/forgot\\-password(?:/)?$"
+    },
+    {
+      "page": "/auth/login",
+      "regex": "^/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/login(?:/)?$"
+    },
+    {
+      "page": "/auth/sign-in",
+      "regex": "^/auth/sign\\-in(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/sign\\-in(?:/)?$"
+    },
+    {
+      "page": "/auth/sign-up",
+      "regex": "^/auth/sign\\-up(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/sign\\-up(?:/)?$"
+    },
+    {
+      "page": "/cases",
+      "regex": "^/cases(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cases(?:/)?$"
+    },
+    {
+      "page": "/custody",
+      "regex": "^/custody(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/custody(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/evidence",
+      "regex": "^/evidence(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evidence(?:/)?$"
+    },
+    {
+      "page": "/evidence/new",
+      "regex": "^/evidence/new(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evidence/new(?:/)?$"
+    },
+    {
+      "page": "/profile",
+      "regex": "^/profile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profile(?:/)?$"
+    },
+    {
+      "page": "/reports",
+      "regex": "^/reports(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/reports(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

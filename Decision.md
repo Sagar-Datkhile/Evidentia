@@ -47,3 +47,16 @@
 - **Context:** The application must integrate with real Supabase services (PostgreSQL, Auth, Storage, RLS) while remaining immediately demo-ready and testable without hard dependency on unconfigured remote credentials during local evaluation.
 - **Decision:** Provide complete Supabase SQL migrations, RLS policies, and server/client bindings, accompanied by a resilient server-side state engine that seamlessly operates with Supabase credentials or bootstraps demo cases, realistic evidence files, and verified commits when credentials are being provisioned.
 - **Consequences:** Ensures zero blockers for evaluators, immediate interactive demo walkthroughs, and clean cutover to hosted Supabase projects.
+
+---
+
+## ADR-006: Database-Backed Role Management with Safe 'pending' Default and Elevation Protection
+- **Date:** 2026-10-10
+- **Status:** Accepted
+- **Context:** Law enforcement and judicial evidence systems must maintain strict cryptographic boundaries. Allowing frontend role selection or relying solely on hidden UI elements exposes the system to trivial privilege escalation attacks.
+- **Decision:** 
+  1. Store all role authorization data strictly in Supabase PostgreSQL (`public.profiles.role`), defaulting newly registered accounts to `'pending'`.
+  2. Provision profiles automatically via a database trigger (`public.handle_new_user()`) executed `AFTER INSERT ON auth.users`.
+  3. Enforce role immutability for non-administrators via a `BEFORE UPDATE ON public.profiles` trigger (`public.protect_profile_role()`) that rejects any role modification unless the caller is an verified Administrator.
+  4. Restrict high-impact operations (such as registering evidence and creating version commits) on both client and server to verified roles (`police`, `forensic`, `admin`), while pending accounts receive clear visual status notices.
+- **Consequences:** Eliminates self-promotion attack vectors, provides tamper-evident identity attribution for all evidence handoffs, and ensures Supabase PostgreSQL acts as the immutable single source of truth for judicial authorization.

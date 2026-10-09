@@ -1,4 +1,4 @@
-// File: C:\Users\PRANAV\Documents\GitHub\Evidentia\src\app\page.tsx
+// File: G:\Coding Projects\GitHub Desktop\Evidentia\src\app\page.tsx
 import * as entry from '../../../src/app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

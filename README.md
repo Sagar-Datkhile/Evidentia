@@ -40,18 +40,47 @@ cd Evidentia
 npm install
 ```
 
-### 3. Environment Variables
+### 3. Environment Variables & Supabase Setup
 Copy `.env.example` to `.env.local`:
 ```bash
 cp .env.example .env.local
 ```
-Fill in your Supabase project credentials (URL, anon key, service-role key).
 
-### 4. Development Server
+Required variables:
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (e.g., `https://xyzcompany.supabase.co`)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Safe public anon key for client-side queries
+- `SUPABASE_SERVICE_ROLE_KEY`: Privileged key used only server-side for backend administration
+
+### 4. Database Schema & Migrations
+Apply the PostgreSQL migrations in your Supabase SQL editor or via Supabase CLI:
+1. `supabase/migrations/20261010000001_evidentia_core_schema.sql`: Core tables, historical immutability triggers, and RLS policies.
+2. `supabase/migrations/20261010000002_auth_and_profiles_enhancement.sql`: Profiles `phone` column, `pending` default role, automatic profile trigger `handle_new_user()`, and role elevation protection trigger `protect_profile_role()`.
+
+### 5. Google OAuth Setup (Optional)
+To enable "Continue with Google" sign-in:
+1. Create OAuth credentials in **Google Cloud Console** (OAuth 2.0 Client ID for Web application).
+2. Set Authorized Redirect URI: `https://<your-project-id>.supabase.co/auth/v1/callback`.
+3. In **Supabase Dashboard** -> **Authentication** -> **Providers** -> **Google**:
+   - Enable Google provider.
+   - Enter your Google Client ID and Client Secret.
+4. In **Supabase Dashboard** -> **Authentication** -> **URL Configuration**:
+   - Site URL: `http://localhost:3000`
+   - Additional Redirect URLs: `http://localhost:3000/auth/callback` (and your production domain).
+
+### 6. Development Server
 ```bash
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## Authentication & Role Architecture
+- **Unauthenticated State:** Landing page renders a clean "Sign In" button in the navbar. Protected routes redirect unauthenticated traffic to `/auth/sign-in`.
+- **Registration Flow:** Users register at `/auth/sign-up` with Full Name, Email, Phone Number (international format validated), and Password.
+- **Safe Default Role:** All new accounts receive the `pending` authorization status. Privileged roles (`police`, `forensic`, `prosecutor`, `admin`) are assigned exclusively by system administrators.
+- **Elevation Protection:** PostgreSQL triggers prevent users from modifying or escalating their own role.
+- **Session Management:** Built on `@supabase/ssr` using HTTP cookies, refresh token rotation, and Next.js middleware.
 
 ---
 

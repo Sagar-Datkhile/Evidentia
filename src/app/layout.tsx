@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 import { Navbar } from "@/components/navigation/Navbar";
 import { Footer } from "@/components/navigation/Footer";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: "EVIDENTIA — Zero-Trust, Tamper-Evident Digital Evidence Management",
@@ -34,9 +35,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="flex min-h-screen flex-col bg-[#F9F9FA] text-[#111111] antialiased selection:bg-[#111111] selection:text-[#FFFFFF]">
-        <Navbar />
-        <main className="flex-1 w-full">{children}</main>
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          <main className="flex-1 w-full">{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

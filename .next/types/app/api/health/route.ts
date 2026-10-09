@@ -1,4 +1,4 @@
-// File: C:\Users\PRANAV\Documents\GitHub\Evidentia\src\app\api\health\route.ts
+// File: G:\Coding Projects\GitHub Desktop\Evidentia\src\app\api\health\route.ts
 import * as entry from '../../../../../src/app/api/health/route.js'
 import type { NextRequest } from 'next/server.js'
 

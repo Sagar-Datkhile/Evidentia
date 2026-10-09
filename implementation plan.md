@@ -20,26 +20,33 @@
   - [x] `.env.example` (Environment variables)
 
 ### Phase 1: Next.js Bootstrap, Design System & Navigation Shell
-- [ ] Initialize Next.js 15+ App Router, Tailwind CSS, TypeScript strict mode, and Lucide React.
-- [ ] Implement monochrome editorial design system tokens (`globals.css`).
-- [ ] Build shared navigation components:
-  - [ ] Translucent sticky header with role indicators.
-  - [ ] Mobile responsive navigation drawer.
-  - [ ] Accessible minimal footer.
-- [ ] Build editorial landing page (`/`):
-  - [ ] Hero section with headline and 3D evidence dossier visual motif.
-  - [ ] Problem vs Solution comparative matrix.
-  - [ ] Cryptographic Trust Layers breakdown.
-  - [ ] Interactive role walkthroughs.
-  - [ ] Security guarantees & CTA.
-- [ ] Build role dashboard shells (`/dashboard`) for Police, Analyst, Prosecutor, and Admin.
+- [x] Initialize Next.js 15+ App Router, Tailwind CSS, TypeScript strict mode, and Lucide React.
+- [x] Implement monochrome editorial design system tokens (`globals.css`).
+- [x] Build shared navigation components:
+  - [x] Translucent sticky header with real Supabase Auth states (Sign In button when unauthenticated, profile dropdown when authenticated).
+  - [x] Mobile responsive navigation drawer with role awareness.
+  - [x] Accessible minimal footer.
+- [x] Build editorial landing page (`/`):
+  - [x] Hero section with headline ("Every Record. Every Handoff. Verifiable.") and 3D evidence dossier visual motif.
+  - [x] Remove Test Tamper Detection button while keeping Explore Platform.
+  - [x] Problem vs Solution comparative matrix.
+  - [x] Cryptographic Trust Layers breakdown.
+  - [x] Interactive role walkthroughs.
+  - [x] Security guarantees & CTA.
+- [x] Build role dashboard shells (`/dashboard`) for Police, Analyst, Prosecutor, Admin, and Pending.
 
-### Phase 2: Supabase Security Foundation & Migrations
-- [ ] Create `supabase/schema.sql` and versioned timestamped migrations under `supabase/migrations/`.
-- [ ] Define PostgreSQL tables: `profiles`, `organizations`, `cases`, `case_assignments`, `evidence`, `evidence_versions`, `evidence_commits`, `custody_transfers`, `custody_events`, `audit_events`, `merkle_batches`, `merkle_leaves`, `merkle_checkpoints`, `webauthn_credentials`.
-- [ ] Define Row Level Security (RLS) policies enforcing deny-by-default and case-assignment scoping.
-- [ ] Implement private storage bucket rules (`private-evidence`, `private-auth-captures`, `private-reports`).
-- [ ] Build typed Supabase client factory (`client.ts`, `server.ts`, `admin.ts`).
+### Phase 2: Supabase Security Foundation, Auth & Migrations
+- [x] Create `supabase/schema.sql` and versioned timestamped migrations (`20261010000001_evidentia_core_schema.sql`, `20261010000002_auth_and_profiles_enhancement.sql`).
+- [x] Define PostgreSQL `profiles` table with `phone`, `role` default `'pending'`, and trigger-based provisioning (`handle_new_user()`).
+- [x] Enforce Row Level Security (RLS) policies and trigger-based role protection (`protect_profile_role()`) preventing self-elevation.
+- [x] Build typed Supabase client factory (`client.ts`, `server.ts`, `admin.ts`) using `@supabase/ssr`.
+- [x] Implement Next.js `middleware.ts` for cookie session refresh and route protection.
+- [x] Implement full authentication suite:
+  - [x] `/auth/sign-in` (Email/Password, Google OAuth, show/hide password).
+  - [x] `/auth/sign-up` (Full Name, Email, International phone format validation, password policy, pending role notice, Google OAuth).
+  - [x] `/auth/forgot-password` (Email password reset).
+  - [x] `/auth/callback` (OAuth session exchange & profile synchronization).
+  - [x] `/profile` (View role, update permitted contact info).
 
 ### Phase 3: Evidence Registration & Version Commits
 - [ ] Build Evidence Registration screen (`/evidence/new`):

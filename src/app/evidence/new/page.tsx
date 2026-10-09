@@ -18,14 +18,16 @@ import {
 import { evidenceStore, DEMO_USERS } from "@/lib/data/store";
 import { computeSha256 } from "@/lib/crypto/sha256";
 import { Case, UserProfile } from "@/lib/supabase/types";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 function EvidenceNewForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCaseId = searchParams.get("caseId") || "";
 
+  const { user, profile, isPending, isLoading: authLoading } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(DEMO_USERS.police);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => profile || DEMO_USERS.police);
 
   // Form Fields
   const [selectedCaseId, setSelectedCaseId] = useState(preselectedCaseId);
@@ -43,18 +45,27 @@ function EvidenceNewForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/auth/sign-in?next=/evidence/new");
+      return;
+    }
+
+    if (profile) {
+      setCurrentUser(profile);
+    } else {
+      const saved = localStorage.getItem("evidentia_active_user");
+      if (saved && DEMO_USERS[saved]) {
+        setCurrentUser(DEMO_USERS[saved]);
+      }
+    }
+
     setCases(evidenceStore.getCases());
     if (preselectedCaseId) {
       setSelectedCaseId(preselectedCaseId);
     } else if (evidenceStore.getCases().length > 0) {
       setSelectedCaseId(evidenceStore.getCases()[0].id);
     }
-
-    const saved = localStorage.getItem("evidentia_active_user");
-    if (saved && DEMO_USERS[saved]) {
-      setCurrentUser(DEMO_USERS[saved]);
-    }
-  }, [preselectedCaseId]);
+  }, [preselectedCaseId, authLoading, user, profile, router]);
 
   const handleFileChange = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -343,6 +354,12 @@ function EvidenceNewForm() {
             </p>
           </div>
 
+          {isPending && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+              <span className="font-semibold">Authorization Pending:</span> Your account is currently in pending status. Registering new digital evidence requires Police Officer or Administrator authorization.
+            </div>
+          )}
+
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#F1F1F3]">
             <Link
@@ -353,8 +370,8 @@ function EvidenceNewForm() {
             </Link>
             <button
               type="submit"
-              disabled={isSubmitting || isHashing || !file}
-              className="flex items-center gap-2 rounded-md bg-[#111111] px-5 py-2.5 text-xs font-semibold text-[#FFFFFF] shadow-subtle hover:bg-[#262626] disabled:opacity-50"
+              disabled={isSubmitting || isHashing || !file || isPending}
+              className="flex items-center gap-2 rounded-md bg-[#111111] px-5 py-2.5 text-xs font-semibold text-[#FFFFFF] shadow-subtle hover:bg-[#262626] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Registering & Signing Commit..." : "Seal & Register Evidence V1"}
               <ArrowRight className="h-3.5 w-3.5" />

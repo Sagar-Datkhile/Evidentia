@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import { evidenceStore, DEMO_USERS } from "@/lib/data/store";
 import { CustodyTransfer, UserProfile, EvidenceItem } from "@/lib/supabase/types";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function CustodyPage() {
+  const { profile } = useAuth();
   const [transfers, setTransfers] = useState<CustodyTransfer[]>([]);
   const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(DEMO_USERS.forensic);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => profile || DEMO_USERS.forensic);
 
   // Initiate Transfer Modal State
   const [showInitiateModal, setShowInitiateModal] = useState(false);
@@ -52,11 +54,15 @@ export default function CustodyPage() {
 
   useEffect(() => {
     loadData();
-    const saved = localStorage.getItem("evidentia_active_user");
-    if (saved && DEMO_USERS[saved]) {
-      setCurrentUser(DEMO_USERS[saved]);
+    if (profile) {
+      setCurrentUser(profile);
+    } else {
+      const saved = localStorage.getItem("evidentia_active_user");
+      if (saved && DEMO_USERS[saved]) {
+        setCurrentUser(DEMO_USERS[saved]);
+      }
     }
-  }, []);
+  }, [profile]);
 
   const handleInitiateTransfer = (e: React.FormEvent) => {
     e.preventDefault();

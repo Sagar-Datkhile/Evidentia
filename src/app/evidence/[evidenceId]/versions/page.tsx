@@ -19,6 +19,7 @@ import {
 import { evidenceStore, DEMO_USERS } from "@/lib/data/store";
 import { computeSha256 } from "@/lib/crypto/sha256";
 import { EvidenceItem, EvidenceVersion, UserProfile } from "@/lib/supabase/types";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface PageProps {
   params: Promise<{ evidenceId: string }>;
@@ -29,9 +30,10 @@ export default function EvidenceCreateVersionPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const evidenceId = resolvedParams.evidenceId;
 
+  const { profile } = useAuth();
   const [evidenceItem, setEvidenceItem] = useState<EvidenceItem | undefined>(undefined);
   const [versions, setVersions] = useState<EvidenceVersion[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(DEMO_USERS.police);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => profile || DEMO_USERS.police);
 
   // Form State
   const [parentVersionNum, setParentVersionNum] = useState<number>(1);
@@ -67,11 +69,15 @@ export default function EvidenceCreateVersionPage({ params }: PageProps) {
       setParentVersionNum(item.currentVersionNumber);
     }
 
-    const saved = localStorage.getItem("evidentia_active_user");
-    if (saved && DEMO_USERS[saved]) {
-      setCurrentUser(DEMO_USERS[saved]);
+    if (profile) {
+      setCurrentUser(profile);
+    } else {
+      const saved = localStorage.getItem("evidentia_active_user");
+      if (saved && DEMO_USERS[saved]) {
+        setCurrentUser(DEMO_USERS[saved]);
+      }
     }
-  }, [evidenceId]);
+  }, [evidenceId, profile]);
 
   const handleFileChange = async (selectedFile: File) => {
     setFile(selectedFile);

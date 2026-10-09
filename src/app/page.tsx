@@ -61,21 +61,13 @@ export default function HomePage() {
               </p>
 
               {/* Action Buttons */}
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-8 flex items-center">
                 <Link
                   href="/dashboard"
                   className="flex items-center gap-2 rounded-md bg-[#111111] px-5 py-3 text-sm font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626] hover:shadow-editorial"
                 >
                   Explore Platform
                   <ArrowRight className="h-4 w-4" />
-                </Link>
-
-                <Link
-                  href="/evidence/EV-2026-0042-01/verify"
-                  className="flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-5 py-3 text-sm font-semibold text-[#111111] shadow-subtle transition-all hover:border-[#111111] hover:bg-[#F9F9FA]"
-                >
-                  <FileSearch className="h-4 w-4 text-[#6B6B73]" />
-                  Test Tamper Detection
                 </Link>
               </div>
 

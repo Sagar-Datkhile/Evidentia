@@ -44,16 +44,21 @@ The visual system prioritizes seriousness, institutional credibility, clarity, a
 
 ```
 Public Landing (/)
-├── Explore Features / How It Works
+├── Explore Platform CTA
 ├── Cryptographic Trust Layers
 ├── Problem & Solution Matrix
-└── Authentication Portal (/auth/login, /auth/register)
-    │
-    ▼
+└── Authentication Portal
+    ├── Sign In (/auth/sign-in)
+    ├── Sign Up (/auth/sign-up)
+    ├── Forgot Password (/auth/forgot-password)
+    ├── OAuth Callback (/auth/callback)
+    └── User Profile (/profile)
+        │
+        ▼
 Role Dashboard (/dashboard)
 ├── Police Officer Hub
 │   ├── Case Dossiers (/cases)
-│   ├── Register Evidence (/evidence/new)
+│   ├── Register Evidence (/evidence/new) [Authorized only]
 │   ├── Evidence Repository (/evidence)
 │   └── Custody Transfer Requests (/custody)
 ├── Forensic Analyst Hub
@@ -71,6 +76,16 @@ Role Dashboard (/dashboard)
     ├── Security & Audit Event Logs (/admin/audit)
     └── Key Rotation & Retention Settings (/settings/security)
 ```
+
+### 2.1 Navigation & Navbar States
+- **Unauthenticated State:** Displays only the "Sign In" primary action button (`bg-[#111111] text-[#FFFFFF] rounded-md px-4 py-2`). Never renders hardcoded names, mock roles, or fake session pills. Protected routes automatically redirect unauthenticated visits to `/auth/sign-in`.
+- **Authenticated State:** Displays user profile pill with initials avatar, database full name, backend-authorized role badge, and dropdown menu (My Profile, Dashboard, Sign Out). "+ Register Evidence" action is conditionally rendered only for authorized judicial personas (`police`, `admin`).
+
+### 2.2 Authentication Screen Design
+- **Canvas & Card:** Centered `#FFFFFF` editorial card with `#E5E5E7` hairline border, subtle shadow, and `#F9F9FA` canvas.
+- **Form Controls:** Monospace labels, international phone number format validation, password visibility toggle.
+- **Google OAuth Button:** Clean white pill with subtle border and official multicolor Google "G" icon.
+- **Mobile Responsive:** Fluid full-width container on viewports down to 320px with minimum 44px tap targets.
 
 ---
 
