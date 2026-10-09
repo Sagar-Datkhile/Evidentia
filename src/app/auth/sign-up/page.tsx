@@ -81,7 +81,7 @@ function SignUpContent() {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const emailRedirectTo = `${origin}/auth/callback?next=/dashboard`;
 
-      // Supabase signup with safe default role 'pending' and profile metadata
+      // Supabase signup with default role 'user' and profile metadata
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -90,7 +90,7 @@ function SignUpContent() {
           data: {
             full_name: fullName.trim(),
             phone: phone.trim(),
-            role: "pending", // Safe default role - strictly non-privileged
+            role: "user", // Default standard user role
           },
         },
       });
@@ -162,11 +162,8 @@ function SignUpContent() {
             Verify Your Email
           </h2>
           <p className="mt-3 text-xs text-[#6B6B73] leading-relaxed">
-            We have sent a verification link to <span className="font-semibold text-[#111111]">{email}</span>. Please click the link in your email to confirm your account and activate your pending dossier.
+            We have sent a verification link to <span className="font-semibold text-[#111111]">{email}</span>. Please click the link in your email to confirm your account and sign in to EVIDENTIA.
           </p>
-          <div className="mt-6 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] p-3 text-[11px] text-[#6B6B73]">
-            <span className="font-semibold text-[#111111]">Note on Role Assignment:</span> Newly registered accounts receive a safe <code className="font-mono text-[#111111]">pending</code> authorization status until verified by a judicial administrator.
-          </div>
           <div className="mt-8">
             <Link
               href="/auth/sign-in"
@@ -333,11 +330,6 @@ function SignUpContent() {
                   Enforce strong password policy (minimum 8 characters).
                 </p>
               )}
-            </div>
-
-            {/* Safe Role Notice */}
-            <div className="rounded-md border border-[#E5E5E7] bg-[#F9F9FA] p-3 text-[11px] text-[#6B6B73]">
-              <span className="font-semibold text-[#111111]">Default Authorization:</span> New accounts are registered with a safe <code className="font-mono text-[#111111]">pending</code> role. Privileged judicial roles are provisioned exclusively by authorized administrators.
             </div>
 
             {/* Submit Button */}

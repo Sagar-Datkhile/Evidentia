@@ -2,9 +2,10 @@
  * EVIDENTIA Domain Model & Supabase Types
  */
 
-export type StandardRole = "pending" | "police" | "forensic" | "prosecutor" | "admin";
-export type LegacyRole = "Admin" | "Police Officer" | "Forensic Analyst" | "Public Prosecutor";
-export type UserRole = StandardRole | LegacyRole;
+export type AppRole = "user" | "admin";
+export type StandardRole = AppRole;
+export type LegacyRole = "Admin" | "Police Officer" | "Forensic Analyst" | "Public Prosecutor" | "pending" | "police" | "forensic" | "prosecutor";
+export type UserRole = AppRole | LegacyRole;
 
 export interface UserProfile {
   id: string;
@@ -21,42 +22,28 @@ export interface UserProfile {
   updatedAt?: string;
 }
 
-export function normalizeRole(role?: string | null): StandardRole {
-  if (!role) return "pending";
+export function normalizeRole(role?: string | null): AppRole {
+  if (!role) return "user";
   const r = role.toLowerCase().trim();
-  if (r.includes("police")) return "police";
-  if (r.includes("forensic")) return "forensic";
-  if (r.includes("prosecut")) return "prosecutor";
-  if (r.includes("admin")) return "admin";
-  if (r === "pending") return "pending";
-  return "pending";
+  if (r === "admin") return "admin";
+  return "user";
 }
 
 export function formatRoleLabel(role?: string | null): string {
   const norm = normalizeRole(role);
-  switch (norm) {
-    case "police":
-      return "Police Officer";
-    case "forensic":
-      return "Forensic Analyst";
-    case "prosecutor":
-      return "Public Prosecutor";
-    case "admin":
-      return "Administrator";
-    case "pending":
-    default:
-      return "Pending Verification";
-  }
+  return norm === "admin" ? "Admin" : "User";
+}
+
+export function isAdmin(role?: string | null): boolean {
+  return normalizeRole(role) === "admin";
 }
 
 export function canRegisterEvidence(role?: string | null): boolean {
-  const norm = normalizeRole(role);
-  return norm === "police" || norm === "admin";
+  return true;
 }
 
 export function canPerformForensics(role?: string | null): boolean {
-  const norm = normalizeRole(role);
-  return norm === "forensic" || norm === "admin";
+  return true;
 }
 
 export type CaseStatus = "Active" | "Under Analysis" | "In Trial" | "Archived";

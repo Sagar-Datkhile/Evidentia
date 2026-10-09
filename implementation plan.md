@@ -36,17 +36,20 @@
 - [x] Build role dashboard shells (`/dashboard`) for Police, Analyst, Prosecutor, Admin, and Pending.
 
 ### Phase 2: Supabase Security Foundation, Auth & Migrations
-- [x] Create `supabase/schema.sql` and versioned timestamped migrations (`20261010000001_evidentia_core_schema.sql`, `20261010000002_auth_and_profiles_enhancement.sql`).
-- [x] Define PostgreSQL `profiles` table with `phone`, `role` default `'pending'`, and trigger-based provisioning (`handle_new_user()`).
+- [x] Create `supabase/schema.sql` and versioned timestamped migrations (`20261010000001_evidentia_core_schema.sql`, `20261010000002_auth_and_profiles_enhancement.sql`, `evidentia_roles_user_admin.sql`).
+- [x] Consolidate PostgreSQL `profiles` table to binary roles (`user`, `admin`), `CHECK (role IN ('user', 'admin'))`, defaulting to `'user'`.
+- [x] Implement database trigger (`handle_new_user()`) strictly defaulting all email/password and Google OAuth signups to `'user'`, ignoring client metadata.
 - [x] Enforce Row Level Security (RLS) policies and trigger-based role protection (`protect_profile_role()`) preventing self-elevation.
+- [x] Enforce case access security via `can_access_case(p_case_id, p_user_id)` requiring admin or explicit `case_assignments` participation (no universal user access).
+- [x] Implement protected Next.js Route Handler (`/api/admin/roles`) for admin-only user listing and promotion/demotion using service-role client with self-demotion prevention and audit logging.
 - [x] Build typed Supabase client factory (`client.ts`, `server.ts`, `admin.ts`) using `@supabase/ssr`.
 - [x] Implement Next.js `middleware.ts` for cookie session refresh and route protection.
 - [x] Implement full authentication suite:
   - [x] `/auth/sign-in` (Email/Password, Google OAuth, show/hide password).
-  - [x] `/auth/sign-up` (Full Name, Email, International phone format validation, password policy, pending role notice, Google OAuth).
+  - [x] `/auth/sign-up` (Full Name, Email, International phone format validation, password policy, default `'user'` role, Google OAuth).
   - [x] `/auth/forgot-password` (Email password reset).
-  - [x] `/auth/callback` (OAuth session exchange & profile synchronization).
-  - [x] `/profile` (View role, update permitted contact info).
+  - [x] `/auth/callback` (OAuth session exchange & profile synchronization defaulting to `'user'`).
+  - [x] `/profile` (Assigned Role: User/Admin display, read-only for normal users, admin role management console).
 
 ### Phase 3: Evidence Registration & Version Commits
 - [ ] Build Evidence Registration screen (`/evidence/new`):

@@ -25,7 +25,7 @@ function EvidenceNewForm() {
   const searchParams = useSearchParams();
   const preselectedCaseId = searchParams.get("caseId") || "";
 
-  const { user, profile, isPending, isLoading: authLoading } = useAuth();
+  const { user, profile, isLoading: authLoading } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => profile || DEMO_USERS.police);
 
@@ -354,12 +354,6 @@ function EvidenceNewForm() {
             </p>
           </div>
 
-          {isPending && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
-              <span className="font-semibold">Authorization Pending:</span> Your account is currently in pending status. Registering new digital evidence requires Police Officer or Administrator authorization.
-            </div>
-          )}
-
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#F1F1F3]">
             <Link
@@ -370,7 +364,7 @@ function EvidenceNewForm() {
             </Link>
             <button
               type="submit"
-              disabled={isSubmitting || isHashing || !file || isPending}
+              disabled={isSubmitting || isHashing || !file}
               className="flex items-center gap-2 rounded-md bg-[#111111] px-5 py-2.5 text-xs font-semibold text-[#FFFFFF] shadow-subtle hover:bg-[#262626] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Registering & Signing Commit..." : "Seal & Register Evidence V1"}

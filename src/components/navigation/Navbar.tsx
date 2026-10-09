@@ -181,14 +181,9 @@ export function Navbar() {
                       <p className="font-semibold text-xs text-[#111111] truncate">{displayName}</p>
                       <p className="text-[10px] text-[#6B6B73] truncate font-mono mt-0.5">{user.email}</p>
                       <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E7] bg-[#F9F9FA] px-2 py-0.5 text-[10px] font-mono text-[#111111]">
-                        <span className={`h-1.5 w-1.5 rounded-full ${isPending ? "bg-amber-500" : "bg-emerald-500"}`} />
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                         <span>{roleLabel}</span>
                       </div>
-                      {isPending && (
-                        <p className="mt-1.5 text-[10px] text-amber-700 leading-tight">
-                          Awaiting administrative verification for evidence operations.
-                        </p>
-                      )}
                     </div>
 
                     <Link
@@ -267,13 +262,6 @@ export function Navbar() {
                   <p className="text-[10px] text-[#8E8E93] truncate">{user.email}</p>
                 </div>
               </div>
-
-              {isPending && (
-                <div className="mt-2.5 flex items-start gap-1.5 rounded border border-amber-200 bg-amber-50 p-2 text-[10px] text-amber-800">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
-                  <span>Account pending approval. Privileged operations are restricted.</span>
-                </div>
-              )}
 
               <div className="mt-3 flex gap-2">
                 <Link

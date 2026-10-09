@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     email TEXT NOT NULL,
     full_name TEXT NOT NULL,
     phone TEXT,
-    role TEXT NOT NULL DEFAULT 'pending' CHECK (role IN ('pending', 'police', 'forensic', 'prosecutor', 'admin', 'Admin', 'Police Officer', 'Forensic Analyst', 'Public Prosecutor')),
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
     badge_number TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -315,33 +315,37 @@ CREATE POLICY "Users can update own profile (excluding role)" ON profiles
     FOR UPDATE TO authenticated USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
 
--- Cases: Readable by Admins or assigned case members
+-- Case Access Function: Requires admin or active assigned user
+CREATE OR REPLACE FUNCTION public.can_access_case(p_case_id TEXT, p_user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = p_user_id AND role = 'admin' AND is_active = true
+    ) OR EXISTS (
+        SELECT 1 FROM public.case_assignments
+        WHERE case_id = p_case_id AND user_id = p_user_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Cases: Scoped via can_access_case
 CREATE POLICY "Cases readable by assigned users or admin" ON cases
     FOR SELECT TO authenticated USING (
-        EXISTS (
-            SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'Admin'
-        ) OR
-        EXISTS (
-            SELECT 1 FROM case_assignments WHERE case_assignments.case_id = cases.id AND case_assignments.user_id = auth.uid()
-        )
+        public.can_access_case(cases.id, auth.uid())
     );
 
-CREATE POLICY "Cases insertable by Police Officer or Admin" ON cases
+CREATE POLICY "Cases insertable by admin or user" ON cases
     FOR INSERT TO authenticated WITH CHECK (
         EXISTS (
-            SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('Police Officer', 'Admin')
+            SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('admin', 'user')
         )
     );
 
--- Evidence: Readable by assigned case users or Admin
+-- Evidence: Scoped via can_access_case
 CREATE POLICY "Evidence readable by case participants or admin" ON evidence
     FOR SELECT TO authenticated USING (
-        EXISTS (
-            SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'Admin'
-        ) OR
-        EXISTS (
-            SELECT 1 FROM case_assignments WHERE case_assignments.case_id = evidence.case_id AND case_assignments.user_id = auth.uid()
-        )
+        public.can_access_case(evidence.case_id, auth.uid())
     );
 
 -- Historical Immutability Triggers: Block UPDATE and DELETE on evidence_versions and evidence_commits
@@ -383,7 +387,7 @@ BEGIN
         id, email, full_name, phone, avatar_url, role, is_active, created_at, updated_at
     )
     VALUES (
-        NEW.id, NEW.email, assigned_name, assigned_phone, assigned_avatar, 'pending', true, timezone('utc', now()), timezone('utc', now())
+        NEW.id, NEW.email, assigned_name, assigned_phone, assigned_avatar, 'user', true, timezone('utc', now()), timezone('utc', now())
     )
     ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
@@ -416,7 +420,7 @@ BEGIN
     FROM public.profiles
     WHERE id = auth.uid();
 
-    IF caller_role NOT IN ('admin', 'Admin') THEN
+    IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Unauthorized: Users cannot elevate or alter their own authorization role.';
     END IF;
 

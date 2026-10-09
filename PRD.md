@@ -28,14 +28,12 @@ EVIDENTIA is a zero-trust, tamper-evident digital evidence management platform e
 
 ## 2. Target Personas & User Roles
 
-EVIDENTIA enforces role-based access control (RBAC) backed by Supabase Auth and Row Level Security (RLS):
+EVIDENTIA enforces role-based access control (RBAC) backed by Supabase Auth and Row Level Security (RLS) consolidated to two canonical roles (`user` and `admin`):
 
-| Role | Key Persona | Responsibilities & Capabilities |
+| Role | Display Label | Responsibilities & Capabilities |
 | :--- | :--- | :--- |
-| **Admin** | Chief Evidence Officer / Court Clerk Administrator | Manages approved users and organizations; provisions role assignments; audits system security logs; manages data retention and key rotation policies. |
-| **Police Officer** | Investigating Officer (IO) | Registers new criminal cases and initial evidence (V1); initiates evidence custody transfers to forensic labs; creates authorized version updates; inspects initial verification reports. |
-| **Forensic Analyst** | Lab Scientist / Digital Examiner | Accesses assigned evidence; verifies incoming physical/digital file integrity; conducts analysis and submits forensic reports as authorized versions or auxiliary evidence; inspects document diffs. |
-| **Public Prosecutor** | Assistant State Attorney / Court Prosecutor | Reviews case dockets and assigned evidence; inspects cryptographic Evidence Passports; verifies Merkle proofs, signatures, and custody chains; exports court-admissible reports. |
+| **Admin** | `Admin` | Platform administration, system auditing, user governance, and role promotion/demotion via protected backend handler. Superuser access across all cases. |
+| **User** | `User` | Default standard account for judicial officers, police investigators, forensic scientists, and prosecutors. Access is strictly scoped to assigned cases via `case_assignments` and evaluated by `can_access_case`. Never granted unassigned case access. |
 
 ---
 
@@ -51,9 +49,10 @@ EVIDENTIA enforces role-based access control (RBAC) backed by Supabase Auth and 
 - **Supabase Auth & Session Management:** Integrated via `@supabase/ssr` with secure cookie-based session persistence, refresh token rotation, and server-side route protection.
 - **Multi-Provider Support:** Email/Password authentication and Google OAuth (`signInWithOAuth`) with official multicolor Google branding.
 - **Account Registration & Intake:** Collects Full Name, Email Address, international format validated Phone Number (E.164 compliant), and password meeting Supabase strength policy.
-- **Safe Default Role:** All newly registered users (via email/password or Google OAuth) receive an initial `pending` role awaiting administrative verification.
-- **Database-Backed RBAC:** `profiles` table stores judicial identities with strict PostgreSQL Row Level Security (RLS) and triggers (`protect_profile_role`) prohibiting self-elevation.
-- **Privileged Roles:** `police` (investigative intake & evidence registration), `forensic` (laboratory analysis & version creation), `prosecutor` (judicial inspection & passport export), and `admin` (user governance & role provisioning).
+- **Default Role:** Every new email/password and Google signup defaults strictly to `'user'`. Any client-supplied role metadata is ignored by the database provisioning trigger (`public.handle_new_user()`).
+- **Database-Backed RBAC:** `profiles` table stores identities with `CHECK (role IN ('user', 'admin'))`, PostgreSQL Row Level Security (RLS), and database trigger (`protect_profile_role`) strictly prohibiting user self-elevation.
+- **Role Elevation via Protected Route:** Role promotion or demotion is executed exclusively through an admin-only Next.js Route Handler (`/api/admin/roles`). The handler verifies the caller's active admin session, utilizes the server-side service-role client, prevents self-demotion, validates target roles, and logs every role alteration.
+- **Scoped Case Authorization:** Standard users access only assigned cases validated by `can_access_case(case_id, user_id)`. Universal unassigned access is never permitted.
 - **Password Recovery:** Email-based recovery flow (`/auth/forgot-password`) utilizing Supabase Auth recovery tokens.
 
 ### 3.3 Case Management System

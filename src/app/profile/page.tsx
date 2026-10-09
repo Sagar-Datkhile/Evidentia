@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,8 +14,10 @@ import {
   AlertCircle,
   Loader2,
   ArrowLeft,
-  Building,
-  BadgeAlert,
+  Users,
+  ShieldAlert,
+  ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { formatRoleLabel } from "@/lib/supabase/types";
@@ -27,9 +29,19 @@ function validateInternationalPhone(phone: string): boolean {
   return e164Regex.test(cleaned);
 }
 
+interface AdminUserRecord {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  role: "user" | "admin";
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile, role, isLoading: authLoading, updateProfile, signOut } = useAuth();
+  const { user, profile, isAdmin, isLoading: authLoading, updateProfile, signOut } = useAuth();
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -38,6 +50,13 @@ export default function ProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  // Admin Role Management state
+  const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -49,6 +68,62 @@ export default function ProfilePage() {
       setAvatarUrl(profile.avatarUrl || "");
     }
   }, [user, profile, authLoading, router]);
+
+  const fetchAdminUsers = useCallback(async () => {
+    if (!isAdmin) return;
+    setAdminLoading(true);
+    setAdminError(null);
+    try {
+      const res = await fetch("/api/admin/roles");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setAdminUsers(data.users || []);
+    } catch (err: any) {
+      setAdminError(err.message || "Failed to load user accounts.");
+    } finally {
+      setAdminLoading(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchAdminUsers();
+    }
+  }, [isAdmin, fetchAdminUsers]);
+
+  const handleRoleChange = async (targetUserId: string, newRole: "user" | "admin") => {
+    setUpdatingUserId(targetUserId);
+    setAdminError(null);
+    setAdminSuccess(null);
+
+    try {
+      const res = await fetch("/api/admin/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUserId,
+          targetRole: newRole,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update user role.");
+      }
+
+      setAdminSuccess(data.message || `Successfully assigned role ${formatRoleLabel(newRole)}.`);
+      setTimeout(() => setAdminSuccess(null), 5000);
+      await fetchAdminUsers();
+    } catch (err: any) {
+      setAdminError(err.message || "Error updating role.");
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,10 +160,9 @@ export default function ProfilePage() {
   }
 
   const roleLabel = formatRoleLabel(profile?.role);
-  const isPending = role === "pending";
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Back to Dashboard */}
       <div className="mb-6">
         <Link
@@ -107,7 +181,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-4">
               {avatarUrl ? (
                 <div className="relative h-16 w-16 overflow-hidden rounded-full border border-[#E5E5E7]">
-                  <Image src={avatarUrl} alt={fullName} fill className="object-cover" />
+                  <Image src={avatarUrl} alt={fullName || "Avatar"} fill className="object-cover" />
                 </div>
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#111111] text-lg font-bold text-[#FFFFFF]">
@@ -120,7 +194,8 @@ export default function ProfilePage() {
                 </h2>
                 <p className="text-xs text-[#6B6B73] truncate font-mono">{user.email}</p>
                 <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E7] bg-[#F9F9FA] px-2.5 py-0.5 text-[10px] font-mono text-[#111111]">
-                  <span className={`h-1.5 w-1.5 rounded-full ${isPending ? "bg-amber-500" : "bg-emerald-500"}`} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-purple-600" : "bg-emerald-500"}`} />
+                  <span className="font-semibold">Assigned Role:</span>
                   <span>{roleLabel}</span>
                 </div>
               </div>
@@ -133,23 +208,11 @@ export default function ProfilePage() {
                 <div className="space-y-1">
                   <p className="font-semibold text-[#111111]">Cryptographic RBAC Enforced</p>
                   <p className="text-[11px] text-[#6B6B73] leading-relaxed">
-                    User roles are locked at the database level by Row Level Security (RLS) triggers. Self-promotion is strictly blocked.
+                    Account roles are enforced at the database level by Row Level Security (RLS) triggers. Self-promotion and unauthorized elevations are strictly rejected.
                   </p>
                 </div>
               </div>
             </div>
-
-            {isPending && (
-              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2">
-                <BadgeAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">Pending Authorization</p>
-                  <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                    Your account has been registered and assigned the safe <code className="font-mono font-semibold">pending</code> status. Contact an administrator to receive Police Officer, Forensic Analyst, or Prosecutor credentials.
-                  </p>
-                </div>
-              </div>
-            )}
 
             <div className="mt-6 border-t border-[#F1F1F3] pt-4">
               <button
@@ -267,16 +330,21 @@ export default function ProfilePage() {
               {/* Readonly Role Display */}
               <div>
                 <label className="block text-xs font-semibold text-[#111111] mb-1.5 font-mono">
-                  Assigned Judicial Role
+                  Assigned Role
                 </label>
-                <input
-                  type="text"
-                  disabled
-                  value={roleLabel}
-                  className="w-full rounded-md border border-[#E5E5E7] bg-[#F1F1F3] px-3.5 py-2.5 text-xs text-[#6B6B73] cursor-not-allowed font-mono"
-                />
+                <div className="relative">
+                  <Shield className="absolute left-3.5 top-2.5 h-4 w-4 text-[#8E8E93]" />
+                  <input
+                    type="text"
+                    disabled
+                    value={roleLabel}
+                    className="w-full rounded-md border border-[#E5E5E7] bg-[#F1F1F3] pl-10 pr-3.5 py-2.5 text-xs text-[#6B6B73] cursor-not-allowed font-mono font-medium"
+                  />
+                </div>
                 <p className="mt-1 text-[10px] text-[#8E8E93]">
-                  Only an authorized platform administrator may assign or alter roles.
+                  {isAdmin
+                    ? "You have Administrator privileges. You may manage user roles below."
+                    : "Read-only. Only authorized platform administrators may alter assigned roles."}
                 </p>
               </div>
 
@@ -301,6 +369,155 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* ADMIN-ONLY ROLE MANAGEMENT CONSOLE */}
+      {/* ------------------------------------------------------------------- */}
+      {isAdmin && (
+        <div className="mt-12 rounded-xl border border-[#E5E5E7] bg-[#FFFFFF] p-8 shadow-editorial">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#F1F1F3]">
+            <div>
+              <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold text-[#111111]">
+                <Users className="h-4 w-4" />
+                <span>ADMINISTRATOR CONSOLE</span>
+              </div>
+              <h3 className="mt-1 font-heading text-xl font-bold text-[#111111]">
+                User & Role Management
+              </h3>
+              <p className="mt-1 text-xs text-[#6B6B73]">
+                Manage role assignments for registered judicial personnel. All role changes are executed via protected service APIs and logged to immutable audit records.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={fetchAdminUsers}
+              disabled={adminLoading}
+              className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#111111] hover:border-[#111111] transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${adminLoading ? "animate-spin" : ""}`} />
+              <span>Refresh Accounts</span>
+            </button>
+          </div>
+
+          {/* Admin Feedback Alerts */}
+          {adminSuccess && (
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>{adminSuccess}</span>
+            </div>
+          )}
+
+          {adminError && (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+              <span>{adminError}</span>
+            </div>
+          )}
+
+          {/* User List Table */}
+          <div className="mt-6 overflow-x-auto">
+            {adminLoading && adminUsers.length === 0 ? (
+              <div className="flex h-36 items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-[#111111]" />
+              </div>
+            ) : adminUsers.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[#6B6B73]">
+                No user profiles found in the system.
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#E5E5E7] text-[11px] font-mono text-[#6B6B73]">
+                    <th className="py-2.5 px-3 font-semibold">User</th>
+                    <th className="py-2.5 px-3 font-semibold">Assigned Role</th>
+                    <th className="py-2.5 px-3 font-semibold hidden sm:table-cell">Account ID</th>
+                    <th className="py-2.5 px-3 font-semibold hidden md:table-cell">Registered</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F1F1F3] text-xs">
+                  {adminUsers.map((u) => {
+                    const isSelf = u.id === user.id;
+                    const isTargetAdmin = u.role === "admin";
+                    const isUpdating = updatingUserId === u.id;
+
+                    return (
+                      <tr key={u.id} className="hover:bg-[#F9F9FA]/80 transition-colors">
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-[#111111]">{u.fullName || "Unnamed User"}</div>
+                          <div className="text-[11px] font-mono text-[#6B6B73]">{u.email}</div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium border ${
+                              isTargetAdmin
+                                ? "border-purple-200 bg-purple-50 text-purple-700"
+                                : "border-[#E5E5E7] bg-[#F9F9FA] text-[#111111]"
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                isTargetAdmin ? "bg-purple-600" : "bg-emerald-500"
+                              }`}
+                            />
+                            {formatRoleLabel(u.role)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-[10px] text-[#8E8E93] hidden sm:table-cell">
+                          {u.id.slice(0, 8)}...{u.id.slice(-4)}
+                        </td>
+                        <td className="py-3 px-3 font-mono text-[11px] text-[#6B6B73] hidden md:table-cell">
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          {isSelf ? (
+                            <span className="text-[11px] font-mono text-[#8E8E93] italic">
+                              Current Session (Protected)
+                            </span>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                              {isTargetAdmin ? (
+                                <button
+                                  type="button"
+                                  disabled={isUpdating}
+                                  onClick={() => handleRoleChange(u.id, "user")}
+                                  className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                                >
+                                  {isUpdating ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <ShieldAlert className="h-3 w-3" />
+                                  )}
+                                  <span>Demote to User</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={isUpdating}
+                                  onClick={() => handleRoleChange(u.id, "admin")}
+                                  className="inline-flex items-center gap-1 rounded border border-[#111111] bg-[#111111] px-2.5 py-1 text-[11px] font-medium text-[#FFFFFF] hover:bg-[#262626] transition-colors disabled:opacity-50"
+                                >
+                                  {isUpdating ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <ShieldCheck className="h-3 w-3" />
+                                  )}
+                                  <span>Promote to Admin</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

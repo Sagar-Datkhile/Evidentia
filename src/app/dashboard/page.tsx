@@ -29,7 +29,7 @@ import { formatShortHash } from "@/lib/crypto/sha256";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function DashboardPage() {
-  const { user, profile, isPending, canRegister } = useAuth();
+  const { user, profile, canRegister } = useAuth();
   const [activeUser, setActiveUser] = useState<UserProfile>(() => {
     return profile || DEMO_USERS.police;
   });
@@ -122,12 +122,6 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
-
-        {isPending && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            <span className="font-semibold">Authorization Pending:</span> Your judicial dossier has been created and is awaiting role assignment. Evidence registration and modification workflows are restricted until an administrator assigns a verified role.
-          </div>
-        )}
       </div>
 
       {/* ------------------------------------------------------------------- */}
