@@ -14,10 +14,8 @@ import {
   X,
   ChevronDown,
   User as UserIcon,
-  LayoutDashboard,
   LogOut,
   AlertCircle,
-  Plus,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { formatRoleLabel } from "@/lib/supabase/types";
@@ -131,15 +129,7 @@ export function Navbar() {
             </Link>
           ) : (
             <>
-              {canRegister && (
-                <Link
-                  href="/evidence/new"
-                  className="flex items-center gap-1.5 rounded-md bg-[#111111] px-3 py-1.5 text-xs font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626]"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Register Evidence
-                </Link>
-              )}
+
 
               {/* Profile Pill */}
               <div className="relative" ref={dropdownRef}>
@@ -237,14 +227,7 @@ export function Navbar() {
                       <span>My Profile</span>
                     </Link>
 
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
-                    >
-                      <LayoutDashboard className="h-3.5 w-3.5 text-[#6B6B73]" />
-                      <span>Dashboard</span>
-                    </Link>
+
 
                     {profile?.role === "admin" && (
                       <Link

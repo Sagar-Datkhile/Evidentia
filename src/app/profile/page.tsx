@@ -9,7 +9,6 @@ import {
   User as UserIcon,
   Phone,
   Mail,
-  Lock,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -163,58 +162,51 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-      {/* Back to Dashboard */}
+      {/* Back */}
       <div className="mb-6">
         <Link
-          href="/dashboard"
+          href="/cases"
           className="inline-flex items-center gap-1.5 text-xs font-medium text-[#6B6B73] hover:text-[#111111] transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          <span>Back to Dashboard</span>
+          <span>Back to Cases</span>
         </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
-        {/* Left Column: Account & Role Overview */}
-        <div className="md:col-span-5 space-y-6">
-          <div className="rounded-xl border border-[#E5E5E7] bg-[#FFFFFF] p-6 shadow-subtle">
-            <div className="flex items-center gap-4">
+        <div className="md:col-span-4 space-y-4">
+          <div className="rounded-xl border border-[#E5E5E7] bg-[#FFFFFF] p-5 shadow-subtle">
+            {/* Avatar + identity */}
+            <div className="flex items-center gap-3.5">
               {avatarUrl ? (
-                <div className="relative h-16 w-16 overflow-hidden rounded-full border border-[#E5E5E7]">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-[#E5E5E7]">
                   <Image src={avatarUrl} alt={fullName || "Avatar"} fill className="object-cover" />
                 </div>
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#111111] text-lg font-bold text-[#FFFFFF]">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#111111] to-[#3A3A3C] text-base font-bold text-[#FFFFFF]">
                   {(fullName || user.email || "EO").slice(0, 2).toUpperCase()}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="font-heading text-lg font-bold text-[#111111] truncate">
+                <h2 className="font-heading text-sm font-bold text-[#111111] truncate">
                   {fullName || "Judicial Officer"}
                 </h2>
-                <p className="text-xs text-[#6B6B73] truncate font-mono">{user.email}</p>
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E7] bg-[#F9F9FA] px-2.5 py-0.5 text-[10px] font-mono text-[#111111]">
-                  <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-purple-600" : "bg-emerald-500"}`} />
-                  <span className="font-semibold">Assigned Role:</span>
-                  <span>{roleLabel}</span>
+                <p className="mt-0.5 text-[10px] text-[#6B6B73] truncate font-mono">{user.email}</p>
+                <div
+                  className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-mono font-semibold border ${
+                    isAdmin
+                      ? "bg-purple-50 border-purple-200 text-purple-700"
+                      : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-purple-500" : "bg-emerald-500"}`} />
+                  {roleLabel}
                 </div>
               </div>
             </div>
 
-            {/* Role Security Notice */}
-            <div className="mt-6 border-t border-[#F1F1F3] pt-4">
-              <div className="flex items-start gap-2 text-xs">
-                <Lock className="h-4 w-4 text-[#6B6B73] shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-semibold text-[#111111]">Cryptographic RBAC Enforced</p>
-                  <p className="text-[11px] text-[#6B6B73] leading-relaxed">
-                    Account roles are enforced at the database level by Row Level Security (RLS) triggers. Self-promotion and unauthorized elevations are strictly rejected.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 border-t border-[#F1F1F3] pt-4">
+            {/* Sign Out */}
+            <div className="mt-5 border-t border-[#F1F1F3] pt-4">
               <button
                 type="button"
                 onClick={signOut}
@@ -227,7 +219,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Right Column: Editable Profile Details */}
-        <div className="md:col-span-7">
+        <div className="md:col-span-8">
           <div className="rounded-xl border border-[#E5E5E7] bg-[#FFFFFF] p-8 shadow-editorial">
             <h3 className="font-heading text-lg font-bold text-[#111111]">
               Personal Information

@@ -1,110 +1,309 @@
-# EVIDENTIA — Zero-Trust, Tamper-Evident Digital Evidence Management
-*Every Record. Every Handoff. Verifiable.*
+# 🛡️ EVIDENTIA – Zero-Trust, Tamper-Evident Digital Evidence Management System
+
+<p align="center">
+  <img src="SCREENSHOTS/Screenshot 2026-10-10 090831.png" width="100%" alt="Evidentia Banner">
+</p>
+
+<p align="center">
+<b>Zero-Trust Architecture • Content-Addressable Cryptography • Chain of Custody • Judicial Auditability</b>
+</p>
 
 ---
 
-## Overview
-**EVIDENTIA** is a zero-trust digital evidence management platform engineered for judicial and forensic integrity. Inspired by Git's content-addressable commit model and modern cryptographic zero-trust architectures, EVIDENTIA ensures that legal records, autopsy reports, forensic extractions, and First Information Reports (FIRs) can be registered, versioned, transferred, and audited without ever overwriting or losing the immutable original.
+# 🎥 Demo Video
+
+<p align="center">
+  <img src="Judicory.gif" width="80%" alt="Evidentia Demo Workflow">
+</p>
+<p align="center"><i>Interactive evidence sealing, chain-of-custody transfer, and tamper-detection walkthrough.</i></p>
 
 ---
 
-## Core Pillars
-1. **Immutable Registration (V1):** Uploaded evidence is hashed (`SHA-256`) byte-for-byte at the exact moment of registration and stored in encrypted private storage. V1 is permanently sealed.
-2. **Git-Inspired Commit Chains:** Authorized revisions generate new, parent-linked versions (V2, V3...) with mandatory commit messages, actor signatures, and server-side attestation.
-3. **Deterministic Tamper Detection:** Submitted files are compared against registered versions with explicit, unassailable verdicts (`INTEGRITY_VERIFIED`, `CONTENT_MISMATCH`, `SIGNATURE_INVALID`, `MERKLE_PROOF_INVALID`).
-4. **Domain-Separated Merkle Checkpoints:** Evidence batches generate RFC 6962 compliant Merkle trees (`0x00` leaf, `0x01` parent) with Ed25519-signed checkpoint roots and sibling inclusion proofs.
-5. **Step-Up Authentication & Custody:** High-impact operations (version commits, custody handoffs) require FIDO2 / WebAuthn passkey verification (Windows Hello, Touch ID) with policy-governed OTP fallback and optional consent-based custody photos.
-6. **Monochrome Editorial Visual System:** A refined, distraction-free aesthetic (`#F9F9FA`, `#111111`, `Manrope`, `Inter`) designed for courtroom credibility and judicial review.
+# 📸 UI Preview
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>Evidence Vault & Dashboard</strong><br>
+      <img src="SCREENSHOTS/Screenshot 2026-10-10 090831.png" width="400" alt="Evidence Vault">
+    </td>
+    <td align="center">
+      <strong>Immutable Evidence Registration (V1)</strong><br>
+      <img src="SCREENSHOTS/Screenshot 2026-10-10 090845.png" width="400" alt="Registration">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <strong>Cryptographic Tamper Detection</strong><br>
+      <img src="SCREENSHOTS/Screenshot 2026-10-10 090908.png" width="400" alt="Tamper Verification">
+    </td>
+    <td align="center">
+      <strong>Git-Inspired Commit Timeline</strong><br>
+      <img src="SCREENSHOTS/Screenshot 2026-10-10 090919.png" width="400" alt="Timeline">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <strong>Chain of Custody & Step-Up Auth</strong><br>
+      <img src="SCREENSHOTS/Screenshot 2026-10-10 090949.png" width="400" alt="Custody Transfer">
+    </td>
+    <td align="center">
+      <strong>Prosecutor Evidence Passport</strong><br>
+      <img src="SCREENSHOTS/Screenshot 2026-10-10 091012.png" width="400" alt="Passport Audit">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center" colspan="2">
+      <strong>Admin Console & Role-Based Case Assignments</strong><br>
+      <img src="SCREENSHOTS/Screenshot 2026-10-10 091107.png" width="450" alt="Admin Console">
+    </td>
+  </tr>
+</table>
 
 ---
 
-## Tech Stack
-- **Framework:** Next.js 15+ App Router, React 19, TypeScript (Strict Mode)
-- **Styling:** Tailwind CSS, Lucide React, Framer Motion
-- **Cryptography:** Web Crypto API (`SHA-256`, `Ed25519`, `AES-256-GCM`), Domain-Separated Merkle Trees
-- **Authentication & Data:** Supabase (PostgreSQL, Row Level Security, Auth, Private Storage)
-- **Validation:** Zod schemas for all API payloads and forms
+---
+
+![Next.js](https://img.shields.io/badge/Next.js-15+-black?style=flat-square&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript)
+![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-emerald?style=flat-square&logo=supabase)
+![Cryptography](https://img.shields.io/badge/Cryptography-SHA--256%20%7C%20Ed25519-purple?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 ---
 
-## Quickstart Guide
+# 📖 Overview
 
-### 1. Prerequisites
-- Node.js 18.18+ (Node 24 recommended)
-- npm 10+
+**EVIDENTIA** is an enterprise-grade, zero-trust digital evidence management platform engineered for judicial and forensic integrity. Inspired by Git's content-addressable commit architecture and modern zero-trust security standards, EVIDENTIA ensures that digital legal records, autopsy reports, forensic extractions, and First Information Reports (FIRs) can be registered, versioned, transferred, and audited without ever overwriting or compromising the immutable original evidence.
 
-### 2. Installation
+Unlike traditional cloud drives or document repositories where files can be silently modified or overwritten, EVIDENTIA generates unalterable SHA-256 cryptographic digests, RFC 6962 Merkle tree checkpoints, and Ed25519 server signatures at the exact moment of registration.
+
+---
+
+# 🎯 Problem Statement
+
+Modern law enforcement agencies and judicial systems face critical challenges in maintaining digital evidence integrity:
+
+* **Risk of Evidence Tampering:** Digital files (photos, PDFs, logs) can easily be altered, corrupted, or replaced without leaving an obvious trace.
+* **Broken Chain of Custody:** Paper logs and informal transfers fail to cryptographically verify who possessed evidence at any given time.
+* **Overwritten Versions:** Revisions or amendments often overwrite original records, making court presentation vulnerable to suppression motions.
+* **Lack of Independent Judicial Auditability:** Judges, prosecutors, and defense attorneys lack simple, mathematical mechanisms to verify evidence validity without trusting third-party intermediaries.
+
+EVIDENTIA solves these problems by creating a mathematically verifiable, audit-ready cryptographic ledger for every piece of digital evidence.
+
+---
+
+# ✨ Key Features
+
+## 🔒 Immutable Evidence Registration (V1)
+Files are hashed (`SHA-256`) client-side and server-validated before permanent storage in private buckets. Version 1 is permanently sealed and serves as the unalterable source of truth.
+
+---
+
+## 🌳 Git-Inspired Commit Chains & Versioning
+Authorized revisions create new, parent-linked versions (V2, V3...) containing parent hashes, commit messages, actor signatures, and server-side attestations without modifying previous versions.
+
+---
+
+## 🔍 Deterministic Tamper Detection
+Uploaded or presented files are evaluated against registered cryptographic manifests, outputting explicit verdicts:
+* `INTEGRITY_VERIFIED`
+* `CONTENT_MISMATCH`
+* `SIGNATURE_INVALID`
+* `MERKLE_PROOF_INVALID`
+
+---
+
+## 🤝 Cryptographic Chain of Custody & Handoffs
+Transfers between Police Officers, Forensic Analysts, and Prosecutors require explicit handoff workflows, step-up biometric/passkey verification, and optional consent-based photographic records.
+
+---
+
+## 🔑 Step-Up Passkey Authentication
+High-impact operations (custody handoffs, version commits) trigger FIDO2 / WebAuthn passkey prompts (Windows Hello, Touch ID) backed by policy-governed fallback mechanisms.
+
+---
+
+## 🛂 Prosecutor Evidence Passport & Merkle Audit
+Generates a court-ready Evidence Passport containing complete hash lineage, Ed25519 signatures, sibling Merkle inclusion proofs, and one-click PDF audit exports.
+
+---
+
+## 🛡️ Strict Case-Level Access Control (RLS)
+Built on a minimal global role system (`user` vs `admin`) with fine-grained PostgreSQL Row Level Security (`can_access_case`), restricting docket visibility strictly to assigned investigators.
+
+---
+
+# 🏗️ System Architecture
+
+```text
+Evidence Input / File Upload
+              │
+              ▼
+  Client-Side Cryptographic Hash (SHA-256)
+              │
+              ▼
+  Metadata & Parent Version Binding (V1 ➔ V2)
+              │
+              ▼
+  RFC 6962 Domain Merkle Tree Checkpoint
+              │
+              ▼
+  Ed25519 Server Attestation Signature
+              │
+              ▼
+  Supabase Private Storage + PostgreSQL (RLS)
+              │
+              ▼
+  Judicial Audit & Evidence Passport Generation
+```
+
+---
+
+# 🔍 Cryptographic Pipeline
+
+The project implements a zero-trust cryptographic workflow:
+
+1. **Client Sealing:** The user selects a digital evidence file. The browser computes a byte-for-byte SHA-256 hash using the native Web Crypto API.
+2. **Version Linking:** If submitting a revision, the new hash is cryptographically bound to the parent version hash (`parent_hash`).
+3. **Merkle Batching:** Evidence batches construct an RFC 6962 compliant Merkle Tree using domain separation prefixes (`0x00` for leaf nodes, `0x01` for interior parent nodes).
+4. **Attestation Signing:** The backend validates payload integrity and signs the Merkle root using an Ed25519 private key.
+5. **Deterministic Verification:** Submitted files generate live hashes compared against stored state to produce exact diffs or full integrity passes.
+
+---
+
+# 🛠️ Tech Stack
+
+### Frontend & Application Framework
+* **Framework:** Next.js 15+ (App Router)
+* **Language:** TypeScript (Strict Mode)
+* **Styling:** Tailwind CSS, Lucide React Icons, Framer Motion
+
+### Backend & Infrastructure
+* **Database & Auth:** Supabase (PostgreSQL, Row Level Security, Auth)
+* **Storage:** Supabase Private Encrypted Buckets
+* **API Architecture:** Next.js Route Handlers with Zod Validation
+
+### Cryptography & Security Engine
+* **Hashing:** SHA-256 via Web Crypto API
+* **Tree Structure:** RFC 6962 Domain-Separated Merkle Trees
+* **Signatures:** Ed25519 Digital Signatures
+* **Authentication:** FIDO2 / WebAuthn Passkeys, Google OAuth 2.0, HTTP-only Cookies
+
+---
+
+# 📂 Project Structure
+
+```text
+Evidentia/
+│
+├── SCREENSHOTS/                  # UI Preview & Documentation Media
+│   ├── Screenshot 2026-10-10 090831.png
+│   ├── Screenshot 2026-10-10 090845.png
+│   ├── Screenshot 2026-10-10 090908.png
+│   ├── Screenshot 2026-10-10 090919.png
+│   ├── Screenshot 2026-10-10 090949.png
+│   ├── Screenshot 2026-10-10 091012.png
+│   └── Screenshot 2026-10-10 091107.png
+│
+├── Judicory.gif                  # Demo Video / Walkthrough GIF
+├── EVIDENTA VIDEO REDME.mp4      # Demo Walkthrough Video File
+│
+├── src/
+│   ├── app/
+│   │   ├── admin/                # Admin Console & Access Control
+│   │   ├── api/                  # API Endpoints (Auth, Evidence, Verification)
+│   │   ├── auth/                 # Sign In, Sign Up, Callback Routes
+│   │   ├── evidence/             # Evidence Vault, Registration, Verification
+│   │   ├── profile/              # User Profile & Security Settings
+│   │   ├── reports/              # Judicial Reports & Audit Exports
+│   │   └── page.tsx              # Landing Page
+│   │
+│   ├── components/
+│   │   ├── layout/               # Navbar, Footer, Container Layouts
+│   │   ├── ui/                   # Reusable UI Controls (Badges, Buttons, Cards)
+│   │   └── verify/               # Interactive Verification Components
+│   │
+│   └── lib/
+│       ├── crypto/               # Core Cryptographic & Merkle Engine
+│       └── supabase/             # Server/Client Database Helpers
+│
+├── supabase/
+│   └── migrations/               # PostgreSQL Schema, Triggers, & RLS Policies
+│
+├── package.json
+├── README.md
+└── tsconfig.json
+```
+
+---
+
+# 🔒 Security Measures
+
+EVIDENTIA enforces robust security practices across all layers:
+
+* **PostgreSQL Row Level Security (RLS):** Strict table-level policies guarantee users only view dockets they are explicitly assigned to.
+* **Role Elevation Defense:** PostgreSQL triggers block users from modifying their own role (`user` vs `admin`).
+* **Content-Addressable Verification:** Every record relies on hash integrity rather than file path trust.
+* **Step-Up Biometric Authentication:** Critical actions require passkey re-authentication.
+* **Strict Zod Input Validation:** All client requests undergo schema sanitization before processing.
+
+---
+
+# 🚀 Quickstart & Setup
+
+### 1. Installation
 ```bash
 git clone https://github.com/Pranav9949/Evidentia.git
 cd Evidentia
 npm install
 ```
 
-### 3. Environment Variables & Supabase Setup
-Copy `.env.example` to `.env.local`:
+### 2. Environment Configuration
+Create a `.env.local` file:
 ```bash
-cp .env.example .env.local
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-Required variables:
-- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (e.g., `https://xyzcompany.supabase.co`)
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Safe public anon key for client-side queries
-- `SUPABASE_SERVICE_ROLE_KEY`: Privileged key used only server-side for backend administration
+### 3. Database Migration
+Run the SQL scripts in `supabase/migrations/` in your Supabase SQL Editor to apply core schemas, functions, and RLS rules.
 
-### 4. Database Schema & Migrations
-Apply the PostgreSQL migrations in your Supabase SQL editor or via Supabase CLI:
-1. `supabase/migrations/20261010000001_evidentia_core_schema.sql`: Core tables, historical immutability triggers, and RLS policies.
-2. `supabase/migrations/20261010000002_auth_and_profiles_enhancement.sql`: Profiles `phone` column, `pending` default role, automatic profile trigger `handle_new_user()`, and role elevation protection trigger `protect_profile_role()`.
-
-### 5. Google OAuth Setup (Optional)
-To enable "Continue with Google" sign-in:
-1. Create OAuth credentials in **Google Cloud Console** (OAuth 2.0 Client ID for Web application).
-2. Set Authorized Redirect URI: `https://<your-project-id>.supabase.co/auth/v1/callback`.
-3. In **Supabase Dashboard** -> **Authentication** -> **Providers** -> **Google**:
-   - Enable Google provider.
-   - Enter your Google Client ID and Client Secret.
-4. In **Supabase Dashboard** -> **Authentication** -> **URL Configuration**:
-   - Site URL: `http://localhost:3000`
-   - Additional Redirect URLs: `http://localhost:3000/auth/callback` (and your production domain).
-
-### 6. Development Server
+### 4. Run Local Server
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) to launch Evidentia.
 
 ---
 
-## Authentication & Role Architecture
-- **Unauthenticated State:** Landing page renders a clean "Sign In" button in the navbar. Protected routes redirect unauthenticated traffic to `/auth/sign-in`.
-- **Registration Flow:** Users register at `/auth/sign-up` with Full Name, Email, Phone Number (international format validated), and Password.
-- **Strict Two-Role Global Architecture:** The system uses only two global roles: `user` and `admin`. All new signups default to `user`.
-- **Case-Specific Assignments:** Investigative responsibilities (Police Officer, Forensic Analyst, Prosecutor) are handled at the *case level* via `case_assignments`. This ensures least-privilege access, as users only receive these privileges for the specific dockets they are assigned to.
-- **Elevation Protection:** PostgreSQL triggers prevent users from modifying or escalating their own role.
-- **Session Management:** Built on `@supabase/ssr` using HTTP cookies, refresh token rotation, and Next.js middleware.
+# 🚀 Future Improvements
+
+* **Decentralized Blockchain Anchor:** Optional ledger anchoring (Polygon / Ethereum) for cross-jurisdictional legal notarization.
+* **Automated Forensic Anomaly Detection:** Machine-learning powered file header and metadata anomaly scanning.
+* **Hardware Security Enclave Signing:** Native mobile integration for hardware-isolated key storage.
+* **Offline Field Capture:** Offline-first progressive web app (PWA) capability for scene-of-crime evidence recording.
 
 ---
 
-## Admin Case Management
-EVIDENTIA includes a secure **Admin Console** to manage dockets and access control:
-1. **User Management:** Admins can view all registered users and securely promote/demote them (`user` ↔ `admin`).
-2. **Case Creation:** Admins can register new evidence dockets with stable Case IDs and jurisdictions.
-3. **Role-Based Case Assignments:** Admins can assign registered users to specific cases with explicit responsibilities (e.g., "Investigator", "Prosecutor").
-4. **Zero-Trust Access (RLS):** Through Supabase Row Level Security (`can_access_case`), standard users only see and interact with cases they are assigned to. Admin assignments instantly unlock the Evidence Registration dropdown for the authorized user.
+# 👨‍💻 Author
+
+**Evidentia Engineering Team**
+
+Interested in:
+* Cryptography & Digital Forensics
+* Zero-Trust System Architecture
+* Next.js & Full-Stack Security
+* Cloud Native Database Security & RLS
 
 ---
 
-## Demo Walkthrough Script
-1. **Explore Landing:** Open the landing page, review the trust architecture, and select **Sign In / Demo Portal**.
-2. **Role Dashboard:** Switch between **Police Officer**, **Forensic Analyst**, **Public Prosecutor**, and **Admin** to observe tailored dockets.
-3. **Register Evidence (V1):** Upload an official FIR document as a Police Officer; review the computed SHA-256 hash and signed commit.
-4. **Tamper Detection (Exact Match):** Submit the identical file to `/evidence/[id]/verify`; verify all 4 green checkmarks (`PASS`).
-5. **Tamper Detection (Tampered File):** Submit a file with 1 byte modified; observe immediate `CONTENT_MISMATCH` with line-by-line diff.
-6. **Authorized Versioning (V2):** Create a new version with an official amendment, complete step-up authentication, and view the parent-linked commit in the interactive timeline.
-7. **Custody Transfer:** Initiate a custody transfer to the Forensic Lab with optional consent-based photo capture; accept custody as an Analyst.
-8. **Prosecutor Passport:** View and export the cryptographic Evidence Passport with Merkle inclusion proof and Ed25519 root signature.
+# 📄 License & Disclaimer
 
----
+EVIDENTIA is licensed under the **MIT License**.
 
-## License
-MIT License. Copyright (c) 2026 EVIDENTIA Contributors.
+*Disclaimer: EVIDENTIA is designed to assist law enforcement, legal professionals, and forensic analysts in maintaining evidence integrity. System deployment in actual judicial proceedings should be validated against local jurisdictional statutory evidence acts.*
