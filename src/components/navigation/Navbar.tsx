@@ -188,7 +188,6 @@ export function Navbar() {
 
                 {/* Dropdown */}
                 {profileDropdownOpen && (
-<<<<<<< HEAD
                   <div className="absolute right-0 mt-2.5 w-72 rounded-2xl border border-[#E5E5E7] bg-white p-2 shadow-editorial z-50 animate-in fade-in slide-in-from-top-1 duration-150">
 
                     {/* Identity card */}
@@ -219,15 +218,6 @@ export function Navbar() {
                           />
                           {roleLabel}
                         </div>
-=======
-                  <div className="absolute right-0 mt-2 w-64 rounded-lg border border-[#E5E5E7] bg-[#FFFFFF] p-1.5 shadow-editorial z-50">
-                    <div className="border-b border-[#F1F1F3] px-3 py-2.5 mb-1">
-                      <p className="font-semibold text-xs text-[#111111] truncate">{displayName}</p>
-                      <p className="text-[10px] text-[#6B6B73] truncate font-mono mt-0.5">{user.email}</p>
-                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E7] bg-[#F9F9FA] px-2 py-0.5 text-[10px] font-mono text-[#111111]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span>{roleLabel}</span>
->>>>>>> 9261a6f875a3dda71a1f9e8ed95d9f91fb928cf4
                       </div>
                     </div>
 
@@ -256,9 +246,6 @@ export function Navbar() {
                       <span>Dashboard</span>
                     </Link>
 
-<<<<<<< HEAD
-                    <div className="my-1.5 border-t border-[#F1F1F3]" />
-=======
                     {profile?.role === "admin" && (
                       <Link
                         href="/admin/cases"
@@ -270,8 +257,7 @@ export function Navbar() {
                       </Link>
                     )}
 
-                    <div className="my-1 border-t border-[#F1F1F3]" />
->>>>>>> 9261a6f875a3dda71a1f9e8ed95d9f91fb928cf4
+                    <div className="my-1.5 border-t border-[#F1F1F3]" />
 
                     <button
                       onClick={() => {

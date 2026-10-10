@@ -330,11 +330,8 @@ function SignUpContent() {
               )}
             </div>
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> 9261a6f875a3dda71a1f9e8ed95d9f91fb928cf4
             {/* Submit Button */}
             <button
               type="submit"
