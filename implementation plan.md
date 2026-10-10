@@ -50,14 +50,15 @@
   - [x] `/auth/forgot-password` (Email password reset).
   - [x] `/auth/callback` (OAuth session exchange & profile synchronization defaulting to `'user'`).
   - [x] `/profile` (Assigned Role: User/Admin display, read-only for normal users, admin role management console).
+  - [x] Admin Case Management module (`/admin/cases`, `/admin/cases/[id]`, `/admin/users`) with Case creation, assignment, and Zero-Trust `can_access_case` integration.
 
 ### Phase 3: Evidence Registration & Version Commits
-- [ ] Build Evidence Registration screen (`/evidence/new`):
-  - [ ] Drag-and-drop file upload with format and size validation.
-  - [ ] Client & server exact SHA-256 computation over raw bytes.
-  - [ ] Metadata capture (title, case assignment, category, incident timestamp, chain notes).
-  - [ ] Private encrypted upload to storage.
-  - [ ] Atomic creation of immutable `V1` evidence and signed initial commit.
+- [x] Build Evidence Registration screen (`/evidence/new`):
+  - [x] Drag-and-drop file upload with format and size validation.
+  - [x] Client & server exact SHA-256 computation over raw bytes.
+  - [x] Metadata capture (title, case assignment, category, incident timestamp, chain notes).
+  - [x] Private encrypted upload to storage.
+  - [x] Atomic creation of immutable `V1` evidence and signed initial commit.
 - [ ] Build Authorized Versioning workflow (`/evidence/[id]/versions`):
   - [ ] Select parent version (`V1`, `V2`, etc.).
   - [ ] Candidate file upload.

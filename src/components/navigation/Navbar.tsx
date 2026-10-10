@@ -204,6 +204,17 @@ export function Navbar() {
                       <span>Dashboard</span>
                     </Link>
 
+                    {profile?.role === "admin" && (
+                      <Link
+                        href="/admin/cases"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
+                      >
+                        <Shield className="h-3.5 w-3.5 text-[#6B6B73]" />
+                        <span>Admin Console</span>
+                      </Link>
+                    )}
+
                     <div className="my-1 border-t border-[#F1F1F3]" />
 
                     <button
