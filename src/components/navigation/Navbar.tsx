@@ -54,8 +54,8 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Dashboard removed from top nav — still accessible via profile dropdown
   const navLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: Shield },
     { href: "/cases", label: "Cases", icon: FolderGit2 },
     { href: "/evidence", label: "Evidence", icon: FileCheck },
     { href: "/custody", label: "Custody", icon: ArrowRightLeft },
@@ -69,57 +69,60 @@ export function Navbar() {
     }
   };
 
-  const displayName = profile?.fullName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Authenticated User";
+  const displayName =
+    profile?.fullName ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "Authenticated User";
   const roleLabel = formatRoleLabel(profile?.role);
   const initials = getInitials(displayName, user?.email);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#E5E5E7] bg-[#F9F9FA]/90 backdrop-blur-md transition-all">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand & Logo */}
-        <div className="flex items-center gap-6">
-          <Link href="/" className="group flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded border border-[#111111] bg-[#111111] text-[#FFFFFF] shadow-sm transition-transform group-hover:scale-105">
-              <Shield className="h-4 w-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-heading text-lg font-bold tracking-tight text-[#111111]">
-                EVIDENTIA
-              </span>
-              <span className="font-mono text-[9px] font-medium tracking-wider text-[#6B6B73]">
-                TAMPER-EVIDENT DEMS
-              </span>
-            </div>
-          </Link>
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex md:items-center md:gap-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href));
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={(e) => handleNavClick(link.href, e)}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    isActive
-                      ? "bg-[#111111] text-[#FFFFFF]"
-                      : "text-[#6B6B73] hover:bg-[#F1F1F3] hover:text-[#111111]"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        {/* ── Brand & Logo (left) ─────────────────────────────── */}
+        <Link href="/" className="group flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded border border-[#111111] bg-[#111111] text-[#FFFFFF] shadow-sm transition-transform group-hover:scale-105">
+            <Shield className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-heading text-lg font-bold tracking-tight text-[#111111]">
+              EVIDENTIA
+            </span>
+            <span className="font-mono text-[9px] font-medium tracking-wider text-[#6B6B73]">
+              TAMPER-EVIDENT DEMS
+            </span>
+          </div>
+        </Link>
 
-        {/* Right Section: Auth & Actions */}
+        {/* ── Desktop Nav — absolutely centered ───────────────── */}
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 md:flex md:items-center md:gap-1">
+          {navLinks.map((link) => {
+            const Icon = link.icon;
+            const isActive =
+              pathname === link.href || pathname.startsWith(link.href + "/");
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={(e) => handleNavClick(link.href, e)}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  isActive
+                    ? "bg-[#111111] text-[#FFFFFF]"
+                    : "text-[#6B6B73] hover:bg-[#F1F1F3] hover:text-[#111111]"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* ── Right: Auth / Profile ────────────────────────────── */}
         <div className="hidden sm:flex sm:items-center sm:gap-3">
           {!user ? (
-            /* Unauthenticated State: Sign In Button Only */
             <Link
               href="/auth/sign-in"
               className="flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-[#FFFFFF] shadow-subtle transition-all hover:bg-[#262626]"
@@ -127,7 +130,6 @@ export function Navbar() {
               Sign In
             </Link>
           ) : (
-            /* Authenticated State: Profile Dropdown & Register Evidence if authorized */
             <>
               {canRegister && (
                 <Link
@@ -139,62 +141,97 @@ export function Navbar() {
                 </Link>
               )}
 
-              {/* Authenticated User Profile Dropdown */}
+              {/* Profile Pill */}
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-2.5 py-1.5 text-xs font-medium text-[#111111] shadow-subtle transition-all hover:border-[#111111]"
+                  className="flex items-center gap-2.5 rounded-xl border border-[#E5E5E7] bg-white px-3 py-2 text-xs font-medium text-[#111111] shadow-subtle transition-all hover:border-[#111111] hover:shadow-editorial"
                   aria-expanded={profileDropdownOpen}
                   aria-haspopup="true"
                 >
-                  {/* Avatar or Initials */}
+                  {/* Avatar */}
                   {profile?.avatarUrl ? (
-                    <div className="relative h-6 w-6 overflow-hidden rounded-full border border-[#E5E5E7]">
-                      <Image
-                        src={profile.avatarUrl}
-                        alt={displayName}
-                        fill
-                        className="object-cover"
-                      />
+                    <div className="relative h-8 w-8 overflow-hidden rounded-full border-2 border-[#E5E5E7] ring-2 ring-white">
+                      <Image src={profile.avatarUrl} alt={displayName} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#111111] text-[10px] font-semibold text-[#FFFFFF]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#111111] to-[#3A3A3C] text-[11px] font-bold text-white shadow-inner">
                       {initials}
                     </div>
                   )}
 
+                  {/* Name + Role */}
                   <div className="flex flex-col text-left">
-                    <span className="max-w-[130px] truncate font-semibold text-[11px] leading-tight text-[#111111]">
+                    <span className="max-w-[140px] truncate text-[12px] font-semibold leading-tight text-[#111111]">
                       {displayName}
                     </span>
-                    <span className="font-mono text-[9px] text-[#6B6B73]">
+                    <span
+                      className={`inline-flex items-center gap-1 font-mono text-[9px] leading-tight ${
+                        isPending ? "text-amber-600" : "text-emerald-600"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          isPending ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                        }`}
+                      />
                       {roleLabel}
                     </span>
                   </div>
-                  <ChevronDown className="h-3 w-3 text-[#6B6B73]" />
+
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-[#8E8E93] transition-transform duration-200 ${
+                      profileDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
 
-                {/* Dropdown Menu */}
+                {/* Dropdown */}
                 {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-lg border border-[#E5E5E7] bg-[#FFFFFF] p-1.5 shadow-editorial z-50">
-                    <div className="border-b border-[#F1F1F3] px-3 py-2.5 mb-1">
-                      <p className="font-semibold text-xs text-[#111111] truncate">{displayName}</p>
-                      <p className="text-[10px] text-[#6B6B73] truncate font-mono mt-0.5">{user.email}</p>
-                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#E5E5E7] bg-[#F9F9FA] px-2 py-0.5 text-[10px] font-mono text-[#111111]">
-                        <span className={`h-1.5 w-1.5 rounded-full ${isPending ? "bg-amber-500" : "bg-emerald-500"}`} />
-                        <span>{roleLabel}</span>
-                      </div>
-                      {isPending && (
-                        <p className="mt-1.5 text-[10px] text-amber-700 leading-tight">
-                          Awaiting administrative verification for evidence operations.
-                        </p>
+                  <div className="absolute right-0 mt-2.5 w-72 rounded-2xl border border-[#E5E5E7] bg-white p-2 shadow-editorial z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+
+                    {/* Identity card */}
+                    <div className="flex items-center gap-3 rounded-xl bg-[#F9F9FA] border border-[#F1F1F3] px-3 py-3 mb-2">
+                      {profile?.avatarUrl ? (
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-white shadow-sm">
+                          <Image src={profile.avatarUrl} alt={displayName} fill className="object-cover" />
+                        </div>
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#111111] to-[#3A3A3C] text-sm font-bold text-white shadow-sm">
+                          {initials}
+                        </div>
                       )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[13px] text-[#111111] truncate">{displayName}</p>
+                        <p className="text-[10px] text-[#6B6B73] truncate font-mono mt-0.5">{user.email}</p>
+                        <div
+                          className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9px] font-mono font-semibold ${
+                            isPending
+                              ? "bg-amber-50 border border-amber-200 text-amber-700"
+                              : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isPending ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                            }`}
+                          />
+                          {roleLabel}
+                        </div>
+                      </div>
                     </div>
+
+                    {isPending && (
+                      <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] text-amber-700 leading-relaxed">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
+                        <span>Awaiting administrative verification for evidence operations.</span>
+                      </div>
+                    )}
 
                     <Link
                       href="/profile"
                       onClick={() => setProfileDropdownOpen(false)}
-                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
                     >
                       <UserIcon className="h-3.5 w-3.5 text-[#6B6B73]" />
                       <span>My Profile</span>
@@ -203,22 +240,22 @@ export function Navbar() {
                     <Link
                       href="/dashboard"
                       onClick={() => setProfileDropdownOpen(false)}
-                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-[#111111] hover:bg-[#F9F9FA] transition-colors"
                     >
                       <LayoutDashboard className="h-3.5 w-3.5 text-[#6B6B73]" />
                       <span>Dashboard</span>
                     </Link>
 
-                    <div className="my-1 border-t border-[#F1F1F3]" />
+                    <div className="my-1.5 border-t border-[#F1F1F3]" />
 
                     <button
                       onClick={() => {
                         setProfileDropdownOpen(false);
                         signOut();
                       }}
-                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-red-600 hover:bg-red-50 transition-colors"
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 transition-colors"
                     >
-                      <LogOut className="h-3.5 w-3.5 text-red-600" />
+                      <LogOut className="h-3.5 w-3.5 text-red-500" />
                       <span>Sign Out</span>
                     </button>
                   </div>
@@ -228,7 +265,7 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile Hamburger Button */}
+        {/* ── Mobile Hamburger ─────────────────────────────────── */}
         <div className="flex md:hidden">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -240,31 +277,38 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* ── Mobile Drawer ────────────────────────────────────────── */}
       {mobileMenuOpen && (
         <div className="border-b border-[#E5E5E7] bg-[#FFFFFF] px-4 py-4 md:hidden animate-in slide-in-from-top-2">
           {user ? (
-            /* Authenticated User Summary on Mobile */
-            <div className="mb-4 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] p-3">
+            <div className="mb-4 rounded-xl border border-[#E5E5E7] bg-[#F9F9FA] p-3">
               <div className="flex items-center gap-3">
                 {profile?.avatarUrl ? (
-                  <div className="relative h-9 w-9 overflow-hidden rounded-full border border-[#E5E5E7]">
-                    <Image
-                      src={profile.avatarUrl}
-                      alt={displayName}
-                      fill
-                      className="object-cover"
-                    />
+                  <div className="relative h-9 w-9 overflow-hidden rounded-full border-2 border-white shadow-sm">
+                    <Image src={profile.avatarUrl} alt={displayName} fill className="object-cover" />
                   </div>
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#111111] text-xs font-semibold text-[#FFFFFF]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#111111] to-[#3A3A3C] text-xs font-bold text-white shadow-sm">
                     {initials}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-[#111111] truncate">{displayName}</p>
-                  <p className="text-[11px] text-[#6B6B73] font-mono truncate">{roleLabel}</p>
-                  <p className="text-[10px] text-[#8E8E93] truncate">{user.email}</p>
+                  <p className="text-[10px] text-[#6B6B73] font-mono truncate mt-0.5">{user.email}</p>
+                  <div
+                    className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-mono font-semibold ${
+                      isPending
+                        ? "bg-amber-50 border border-amber-200 text-amber-700"
+                        : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        isPending ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                      }`}
+                    />
+                    {roleLabel}
+                  </div>
                 </div>
               </div>
 
@@ -295,7 +339,6 @@ export function Navbar() {
               </div>
             </div>
           ) : (
-            /* Unauthenticated Mobile CTA */
             <div className="mb-4">
               <Link
                 href="/auth/sign-in"
@@ -307,11 +350,11 @@ export function Navbar() {
             </div>
           )}
 
-          {/* Navigation Links */}
           <div className="space-y-1">
             {navLinks.map((link) => {
               const Icon = link.icon;
-              const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href));
+              const isActive =
+                pathname === link.href || pathname.startsWith(link.href + "/");
               return (
                 <Link
                   key={link.href}
@@ -321,9 +364,7 @@ export function Navbar() {
                     setMobileMenuOpen(false);
                   }}
                   className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                    isActive
-                      ? "bg-[#111111] text-[#FFFFFF]"
-                      : "text-[#111111] hover:bg-[#F1F1F3]"
+                    isActive ? "bg-[#111111] text-[#FFFFFF]" : "text-[#111111] hover:bg-[#F1F1F3]"
                   }`}
                 >
                   <Icon className="h-4 w-4" />

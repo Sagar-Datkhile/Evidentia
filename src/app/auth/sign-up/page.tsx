@@ -188,9 +188,7 @@ function SignUpContent() {
           {/* Header & Branding */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2 mb-4 group">
-              <div className="flex h-10 w-10 items-center justify-center rounded border border-[#111111] bg-[#111111] text-[#FFFFFF] shadow-sm transition-transform group-hover:scale-105">
-                <Shield className="h-5 w-5" />
-              </div>
+              <span className="font-heading text-lg font-bold text-[#111111]">EVIDENTIA</span>
             </Link>
             <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111] sm:text-3xl">
               Create Your Account
@@ -335,10 +333,7 @@ function SignUpContent() {
               )}
             </div>
 
-            {/* Safe Role Notice */}
-            <div className="rounded-md border border-[#E5E5E7] bg-[#F9F9FA] p-3 text-[11px] text-[#6B6B73]">
-              <span className="font-semibold text-[#111111]">Default Authorization:</span> New accounts are registered with a safe <code className="font-mono text-[#111111]">pending</code> role. Privileged judicial roles are provisioned exclusively by authorized administrators.
-            </div>
+
 
             {/* Submit Button */}
             <button
