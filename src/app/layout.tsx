@@ -33,8 +33,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="flex min-h-screen flex-col bg-[#F9F9FA] text-[#111111] antialiased selection:bg-[#111111] selection:text-[#FFFFFF]">
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className="flex min-h-screen flex-col bg-[#F9F9FA] text-[#111111] antialiased selection:bg-[#111111] selection:text-[#FFFFFF]"
+        suppressHydrationWarning
+      >
         <AuthProvider>
           <Navbar />
           <main className="flex-1 w-full">{children}</main>

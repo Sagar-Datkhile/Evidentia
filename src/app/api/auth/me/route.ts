@@ -35,7 +35,7 @@ export async function GET() {
         user.user_metadata?.name ||
         user.email?.split("@")[0] ||
         "Judicial Officer",
-      role: profile?.role || "pending",
+      role: profile?.role || "user",
       phone: profile?.phone || user.user_metadata?.phone,
       avatarUrl: profile?.avatar_url || user.user_metadata?.avatar_url,
       organizationId: profile?.organization_id,

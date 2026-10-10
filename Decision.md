@@ -60,3 +60,18 @@
   3. Enforce role immutability for non-administrators via a `BEFORE UPDATE ON public.profiles` trigger (`public.protect_profile_role()`) that rejects any role modification unless the caller is an verified Administrator.
   4. Restrict high-impact operations (such as registering evidence and creating version commits) on both client and server to verified roles (`police`, `forensic`, `admin`), while pending accounts receive clear visual status notices.
 - **Consequences:** Eliminates self-promotion attack vectors, provides tamper-evident identity attribution for all evidence handoffs, and ensures Supabase PostgreSQL acts as the immutable single source of truth for judicial authorization.
+
+---
+
+## ADR-007: Consolidation to Binary User/Admin Roles, Protected Admin Promotion Handler, and Scoped Case Authorization
+- **Date:** 2026-10-10
+- **Status:** Accepted (Supersedes ADR-006 role schema)
+- **Context:** Managing multiple legacy role labels (`police`, `forensic`, `prosecutor`, `pending`) introduced administrative friction and authorization fragmentation. Furthermore, evidence integrity requires that standard users never receive universal access to unassigned case dockets.
+- **Decision:**
+  1. **Binary Canonical Roles:** Enforce `CHECK (role IN ('user', 'admin'))` in PostgreSQL. All legacy non-admin roles and `pending` records migrate to `'user'`; `admin` / `Admin` records remain `'admin'`.
+  2. **Safe Provisioning:** New email/password and Google OAuth registrations default strictly to `'user'` in the `handle_new_user()` trigger, completely ignoring any client-supplied role metadata.
+  3. **Elevation Guard & Self-Promotion Prevention:** The PostgreSQL trigger `protect_profile_role()` and RLS policies block non-administrators from altering roles. Self-promotion and self-demotion are rejected.
+  4. **Scoped Case Security:** The helper function `can_access_case(p_case_id, p_user_id)` strictly requires an active `admin` profile OR explicit assignment in `case_assignments`. Standard users never receive universal case access.
+  5. **Protected Admin Route Handler:** Role promotion and demotion is performed exclusively via `/api/admin/roles` using the server-side service-role client after verifying the caller's active administrative session.
+  6. **UI Alignment:** UI labels display `"Assigned Role"` with values `"User"` or `"Admin"`. All "Pending Verification" labels and pending-role messaging are removed. Role fields are read-only for normal users, with a dedicated role console available only to administrators.
+- **Consequences:** Provides clear and unbreakable security boundaries, removes client-side trust assumptions, ensures strict case confidentiality, and streamlines user authorization workflows.

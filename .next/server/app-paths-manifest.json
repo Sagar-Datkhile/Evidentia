@@ -2,13 +2,5 @@
   "/page": "app/page.js",
   "/auth/sign-in/page": "app/auth/sign-in/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/evidence/[evidenceId]/timeline/page": "app/evidence/[evidenceId]/timeline/page.js",
-  "/evidence/[evidenceId]/verify/page": "app/evidence/[evidenceId]/verify/page.js",
-  "/evidence/[evidenceId]/passport/page": "app/evidence/[evidenceId]/passport/page.js",
-  "/cases/[caseId]/page": "app/cases/[caseId]/page.js",
-  "/cases/page": "app/cases/page.js",
-  "/evidence/page": "app/evidence/page.js",
-  "/custody/page": "app/custody/page.js",
-  "/reports/page": "app/reports/page.js",
   "/profile/page": "app/profile/page.js"
 }

@@ -16,6 +16,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   role: StandardRole;
+  isAdmin: boolean;
   isLoading: boolean;
   isPending: boolean;
   canRegister: boolean;
@@ -32,10 +33,11 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   session: null,
-  role: "pending",
-  isLoading: true,
-  isPending: true,
-  canRegister: false,
+  role: "user",
+  isAdmin: false,
+  isLoading: false,
+  isPending: false,
+  canRegister: true,
   signOut: async () => {},
   refreshProfile: async () => {},
   updateProfile: async () => ({ success: false }),
@@ -78,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // If no row exists yet in profiles (e.g. trigger delayed or unapplied),
-        // build from auth metadata with safe 'pending' default role
+        // build from auth metadata with default 'user' role
         const metadata = authUser.user_metadata || {};
         const safeProfile: UserProfile = {
           id: authUser.id,
@@ -89,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             authUser.email?.split("@")[0] ||
             "Judicial Officer",
           phone: metadata.phone || undefined,
-          role: "pending",
+          role: "user",
           avatarUrl: metadata.avatar_url || undefined,
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -102,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: safeProfile.email,
             full_name: safeProfile.fullName,
             phone: safeProfile.phone || null,
-            role: "pending",
+            role: "user",
             avatar_url: safeProfile.avatarUrl || null,
           });
         } catch {
@@ -242,8 +244,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const role: StandardRole = normalizeRole(profile?.role);
-  const isPending = role === "pending";
-  const canRegister = checkCanRegisterEvidence(profile?.role);
+  const isAdmin = role === "admin";
+  const isPending = false;
+  const canRegister = true;
 
   return (
     <AuthContext.Provider
@@ -252,6 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         session,
         role,
+        isAdmin,
         isLoading,
         isPending,
         canRegister,

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           "Judicial Officer";
         const avatarUrl = metadata.avatar_url || metadata.picture || null;
 
-        // Ensure user profile exists with safe default role 'pending'
+        // Ensure user profile exists with safe default role 'user'
         const { data: existingProfile } = await supabase
           .from("profiles")
           .select("id, role")
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
             email: user.email,
             full_name: fullName,
             avatar_url: avatarUrl,
-            role: "pending",
+            role: "user",
             is_active: true,
           });
         }

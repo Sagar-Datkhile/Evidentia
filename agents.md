@@ -72,11 +72,11 @@ src/
 │   ├── page.tsx                  # Public editorial landing page
 │   ├── auth/
 │   │   ├── sign-in/page.tsx      # Supabase email/password & Google OAuth sign-in
-│   │   ├── sign-up/page.tsx      # User registration with international phone & pending role
+│   │   ├── sign-up/page.tsx      # User registration with international phone & default 'user' role
 │   │   ├── forgot-password/page.tsx # Password recovery dispatch
 │   │   ├── callback/route.ts     # OAuth session exchange & profile synchronization
 │   │   └── login/page.tsx        # Legacy redirect to sign-in
-│   ├── profile/page.tsx          # Authenticated user profile and permitted field updates
+│   ├── profile/page.tsx          # Authenticated user profile and admin role management console
 │   ├── dashboard/page.tsx        # Role-aware dashboard hub
 │   ├── cases/
 │   │   ├── page.tsx              # Case management docket list
@@ -98,6 +98,7 @@ src/
 │   │   ├── users/page.tsx        # Admin user & role management
 │   │   └── audit/page.tsx        # Tamper-evident audit event log
 │   └── api/
+│       ├── admin/roles/route.ts  # Admin-only role management (GET list, POST promote/demote)
 │       ├── auth/me/route.ts
 │       ├── auth/step-up/...      # WebAuthn options, verify, OTP fallback
 │       ├── cases/...             # Case CRUD & assignments
@@ -138,7 +139,7 @@ src/
 
 - **Phase 0 (Repository Audit & Product Plan):** COMPLETE
 - **Phase 1 (Design System & Navigation Shell):** COMPLETE (Editorial Navbar, Hero, Auth Buttons)
-- **Phase 2 (Supabase Auth & Database Profiles):** COMPLETE (SSR Clients, Middleware, Triggers, RLS, Pending Role)
+- **Phase 2 (Supabase Auth & Database Profiles):** COMPLETE (SSR Clients, Middleware, Triggers, RLS, Binary user/admin Roles, Protected Admin Promotion Handler)
 - **Phase 3 (Evidence Registration & Version Commits):** In Progress
 - **Phase 4 (Tamper Detection & Diff Engine):** Pending
 - **Phase 5 (Passkeys & Step-Up Auth):** Pending
@@ -155,3 +156,4 @@ src/
 3. **No Unhandled Errors in Routes:** All API routes must validate input with Zod, authenticate requests, and return standard JSON error structures (`{ error: string, code?: string }`).
 4. **Never Rewrite Prior Architectural Decisions:** Log new decisions in `Decision.md`.
 5. **Report Truthful Test Status:** Only report that a test passed if executed in terminal with code 0.
+6. **Role Migration Guardrails:** Roles are strictly `'user'` and `'admin'`. Every new signup defaults to `'user'`, ignoring client metadata. All promotions/demotions must execute through the protected `/api/admin/roles` handler using the server-side service-role client. Non-administrators can never edit roles, and self-demotion is forbidden. Case access for users is strictly scoped via `can_access_case`.

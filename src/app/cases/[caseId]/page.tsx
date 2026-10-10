@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -14,12 +14,289 @@ import {
   ArrowRight,
   FileSearch,
   ExternalLink,
+  Search,
+  X,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 import { evidenceStore } from "@/lib/data/store";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface PageProps {
   params: Promise<{ caseId: string }>;
 }
+
+// ---- Subcomponent for dynamic case participant management ----
+function CaseParticipants({ caseId }: { caseId: string }) {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
+
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [assignedRole, setAssignedRole] = useState("Police Officer");
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Load assignments
+  const loadAssignments = async () => {
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/assignments`);
+      if (!res.ok) throw new Error("Failed to load assignments");
+      const data = await res.json();
+      setAssignments(data.assignments || []);
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAssignments();
+  }, [caseId]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Exclude already assigned users
+          const assignedIds = new Set(assignments.map((a) => a.user_id));
+          const filtered = (data.users || []).filter((u: any) => !assignedIds.has(u.id));
+          setSearchResults(filtered);
+        }
+      } catch (e) {
+        console.error("Search error", e);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, isAdmin, assignments]);
+
+  // Handle outside click for dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleAssign = async () => {
+    if (!selectedUser) return;
+    setIsAssigning(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUser.id, assignedRole }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Assignment failed");
+      }
+      setSelectedUser(null);
+      setSearchQuery("");
+      await loadAssignments();
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRevoke = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to remove this user's access to this case?")) return;
+    try {
+      const res = await fetch(
+        `/api/cases/${encodeURIComponent(caseId)}/assignments?userId=${encodeURIComponent(userId)}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Revocation failed");
+      }
+      await loadAssignments();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mt-6 pt-4 border-t border-[#F1F1F3]">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-[#6B6B73]">
+          ASSIGNED JUDICIAL PARTICIPANTS
+        </span>
+        <div className="mt-4 flex items-center gap-2 text-xs text-[#6B6B73]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading participants...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 pt-4 border-t border-[#F1F1F3]">
+      <span className="font-mono text-[10px] uppercase tracking-wider text-[#6B6B73]">
+        ASSIGNED JUDICIAL PARTICIPANTS
+      </span>
+
+      {errorMsg && (
+        <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Admin Assignment UI */}
+      {isAdmin && (
+        <div className="mt-3 mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center p-3 rounded-lg border border-[#E5E5E7] bg-[#F9F9FA]">
+          <div className="relative flex-1 w-full" ref={searchRef}>
+            {selectedUser ? (
+              <div className="flex h-9 w-full items-center justify-between rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-3 py-1.5 text-xs shadow-sm">
+                <span className="font-semibold text-[#111111] truncate">
+                  {selectedUser.full_name || selectedUser.email}
+                </span>
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="text-[#8E8E93] hover:text-red-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[#8E8E93]" />
+                  <input
+                    type="text"
+                    placeholder="Search users by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setDropdownOpen(true);
+                    }}
+                    onFocus={() => setDropdownOpen(true)}
+                    className="h-9 w-full rounded-md border border-[#E5E5E7] bg-[#FFFFFF] pl-8 pr-3 text-xs text-[#111111] placeholder-[#8E8E93] focus:border-[#111111] focus:outline-none shadow-sm"
+                  />
+                  {isSearching && (
+                    <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-[#8E8E93]" />
+                  )}
+                </div>
+
+                {dropdownOpen && searchQuery.trim().length >= 2 && (
+                  <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-[#E5E5E7] bg-[#FFFFFF] py-1 shadow-lg">
+                    {searchResults.length === 0 && !isSearching ? (
+                      <div className="px-3 py-2 text-xs text-[#6B6B73]">No matching users found.</div>
+                    ) : (
+                      searchResults.map((u) => (
+                        <button
+                          key={u.id}
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setDropdownOpen(false);
+                            setSearchQuery("");
+                          }}
+                          className="flex w-full flex-col px-3 py-1.5 text-left hover:bg-[#F9F9FA]"
+                        >
+                          <span className="text-xs font-semibold text-[#111111] truncate">
+                            {u.full_name || "Unknown"}
+                          </span>
+                          <span className="text-[10px] text-[#6B6B73] truncate font-mono">
+                            {u.email}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex w-full sm:w-auto items-center gap-2">
+            <select
+              value={assignedRole}
+              onChange={(e) => setAssignedRole(e.target.value)}
+              className="h-9 rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-3 text-xs text-[#111111] focus:border-[#111111] focus:outline-none shadow-sm"
+            >
+              <option value="Police Officer">Police Officer</option>
+              <option value="Forensic Analyst">Forensic Analyst</option>
+              <option value="Public Prosecutor">Public Prosecutor</option>
+              <option value="Case Observer">Case Observer</option>
+            </select>
+            <button
+              onClick={handleAssign}
+              disabled={!selectedUser || isAssigning}
+              className="h-9 rounded-md bg-[#111111] px-3 text-xs font-semibold text-[#FFFFFF] shadow-subtle hover:bg-[#262626] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {isAssigning ? "Assigning..." : "Assign User"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Participants List */}
+      {assignments.length === 0 ? (
+        <div className="mt-3 text-xs text-[#6B6B73] italic">
+          {isAdmin
+            ? "No participants assigned yet. Search for a registered user to assign them to this case."
+            : "No participants are currently assigned to this case."}
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {assignments.map((a) => (
+            <div
+              key={a.id}
+              className="group flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] pl-3 pr-1 py-1 text-xs transition-colors hover:border-[#D1D1D6]"
+            >
+              <div className="flex items-center gap-2">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111111] text-[9px] font-bold text-white uppercase">
+                  {a.profiles.full_name ? a.profiles.full_name.substring(0, 2) : "UU"}
+                </div>
+                <span className="font-semibold text-[#111111]">{a.profiles.full_name || "Unknown User"}</span>
+                <span className="text-[#8E8E93] text-[11px]">({a.assigned_role})</span>
+              </div>
+              
+              {isAdmin && (
+                <button
+                  onClick={() => handleRevoke(a.user_id)}
+                  className="ml-1 rounded-sm p-1 text-[#8E8E93] opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 transition-all focus:opacity-100"
+                  title="Revoke Access"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// --------------------------------------------------------------
 
 export default function CaseDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
@@ -98,24 +375,8 @@ export default function CaseDetailPage({ params }: PageProps) {
           </Link>
         </div>
 
-        {/* Assigned Participants */}
-        <div className="mt-6 pt-4 border-t border-[#F1F1F3]">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[#6B6B73]">
-            Assigned Judicial Participants
-          </span>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {caseItem.assignedUsers.map((u) => (
-              <div
-                key={u.userId}
-                className="flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] px-3 py-1.5 text-xs"
-              >
-                <div className="h-2 w-2 rounded-full bg-[#111111]" />
-                <span className="font-semibold text-[#111111]">{u.fullName}</span>
-                <span className="text-[#8E8E93]">({u.role})</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Dynamic Assigned Participants component replaces the hardcoded list */}
+        <CaseParticipants caseId={caseItem.id} />
       </div>
 
       {/* Evidence Items Section */}

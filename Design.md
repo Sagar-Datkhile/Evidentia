@@ -79,7 +79,9 @@ Role Dashboard (/dashboard)
 
 ### 2.1 Navigation & Navbar States
 - **Unauthenticated State:** Displays only the "Sign In" primary action button (`bg-[#111111] text-[#FFFFFF] rounded-md px-4 py-2`). Never renders hardcoded names, mock roles, or fake session pills. Protected routes automatically redirect unauthenticated visits to `/auth/sign-in`.
-- **Authenticated State:** Displays user profile pill with initials avatar, database full name, backend-authorized role badge, and dropdown menu (My Profile, Dashboard, Sign Out). "+ Register Evidence" action is conditionally rendered only for authorized judicial personas (`police`, `admin`).
+- **Authenticated State:** Displays user profile pill with initials avatar, database full name, backend-authorized role badge ("Admin" or "User"), and dropdown menu (My Profile, Dashboard, Sign Out).
+- **Role Display Specification:** Role labels are uniformly displayed as `Assigned Role: User` or `Assigned Role: Admin`. All legacy "Pending Verification" pills and pending authorization messages are removed.
+- **Profile Role Field:** The role field in user profile screens is read-only for standard users (`User`). Administrators (`Admin`) access a dedicated role management console to promote or demote users through `/api/admin/roles`.
 
 ### 2.2 Authentication Screen Design
 - **Canvas & Card:** Centered `#FFFFFF` editorial card with `#E5E5E7` hairline border, subtle shadow, and `#F9F9FA` canvas.
