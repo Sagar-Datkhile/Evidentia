@@ -269,7 +269,7 @@ function CaseParticipants({ caseId }: { caseId: string }) {
         <div className="mt-3 flex flex-wrap gap-2">
           {assignments.map((a) => (
             <div
-              key={a.id}
+              key={`${a.case_id}-${a.user_id}`}
               className="group flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] pl-3 pr-1 py-1 text-xs transition-colors hover:border-[#D1D1D6]"
             >
               <div className="flex items-center gap-2">
@@ -300,13 +300,42 @@ function CaseParticipants({ caseId }: { caseId: string }) {
 
 export default function CaseDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
-  const caseItem = evidenceStore.getCaseById(resolvedParams.caseId);
+  
+  const [caseItem, setCaseItem] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (!caseItem) {
+  useEffect(() => {
+    async function loadCase() {
+      try {
+        const res = await fetch(`/api/cases/${encodeURIComponent(resolvedParams.caseId)}`);
+        if (!res.ok) {
+          throw new Error("Case not found or unauthorized");
+        }
+        const data = await res.json();
+        setCaseItem(data.case);
+      } catch (err: any) {
+        setErrorMsg(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadCase();
+  }, [resolvedParams.caseId]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#111111]" />
+      </div>
+    );
+  }
+
+  if (errorMsg || !caseItem) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">
         <h1 className="font-heading text-2xl font-bold text-[#111111]">Case Docket Not Found</h1>
-        <p className="mt-2 text-xs text-[#6B6B73]">The requested case ID &quot;{resolvedParams.caseId}&quot; does not exist.</p>
+        <p className="mt-2 text-xs text-[#6B6B73]">The requested case ID &quot;{resolvedParams.caseId}&quot; does not exist or you do not have permission.</p>
         <Link
           href="/cases"
           className="mt-6 inline-flex rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-white"

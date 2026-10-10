@@ -1,9 +1,9 @@
 {
-  "/api/cases/[id]/assignments/route": "app/api/cases/[id]/assignments/route.js",
-  "/api/admin/users/search/route": "app/api/admin/users/search/route.js",
-  "/auth/sign-in/page": "app/auth/sign-in/page.js",
+  "/api/cases/list/route": "app/api/cases/list/route.js",
+  "/api/evidence/register/route": "app/api/evidence/register/route.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/cases/page": "app/cases/page.js",
-  "/evidence/new/page": "app/evidence/new/page.js",
-  "/cases/[caseId]/page": "app/cases/[caseId]/page.js"
+  "/cases/[caseId]/page": "app/cases/[caseId]/page.js",
+  "/auth/sign-in/page": "app/auth/sign-in/page.js",
+  "/evidence/new/page": "app/evidence/new/page.js"
 }

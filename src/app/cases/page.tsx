@@ -1,16 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { FolderGit2, Plus, Search, Filter, Shield, Calendar, Users, ArrowRight } from "lucide-react";
-import { evidenceStore, DEMO_USERS } from "@/lib/data/store";
+import { FolderGit2, Plus, Search, Filter, Shield, Calendar, Users, ArrowRight, Loader2 } from "lucide-react";
 import { Case } from "@/lib/supabase/types";
 
 export default function CasesPage() {
-  const [cases, setCases] = useState<Case[]>(evidenceStore.getCases());
+  const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCases();
+  }, []);
+
+  const fetchCases = async () => {
+    try {
+      const res = await fetch("/api/cases");
+      if (res.ok) {
+        const data = await res.json();
+        setCases(data.cases || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch cases:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // New Case Form State
   const [newCaseNumber, setNewCaseNumber] = useState("");
@@ -27,27 +47,41 @@ export default function CasesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleCreateCase = (e: React.FormEvent) => {
+  const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCaseNumber || !newTitle || !newJurisdiction) return;
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
 
-    const created = evidenceStore.createCase({
-      id: newCaseNumber.trim(),
-      caseNumber: newCaseNumber.trim(),
-      title: newTitle.trim(),
-      jurisdiction: newJurisdiction.trim(),
-      status: "Active",
-      incidentDate: new Date().toISOString(),
-      description: newDescription.trim() || "Official judicial investigation dossier.",
-      createdBy: "usr_police_01",
-    });
+    try {
+      const res = await fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caseNumber: newCaseNumber.trim(),
+          title: newTitle.trim(),
+          jurisdiction: newJurisdiction.trim(),
+          description: newDescription.trim() || "Official judicial investigation dossier.",
+        }),
+      });
 
-    setCases(evidenceStore.getCases());
-    setShowCreateModal(false);
-    setNewCaseNumber("");
-    setNewTitle("");
-    setNewJurisdiction("");
-    setNewDescription("");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create case.");
+      }
+
+      await fetchCases();
+      setShowCreateModal(false);
+      setNewCaseNumber("");
+      setNewTitle("");
+      setNewJurisdiction("");
+      setNewDescription("");
+    } catch (err: any) {
+      setSubmitError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -141,7 +175,7 @@ export default function CasesPage() {
                 <div className="flex items-center gap-2">
                   <Users className="h-3.5 w-3.5 text-[#8E8E93]" />
                   <span>
-                    {c.assignedUsers?.length || 2} Assigned Officers & Analysts
+                    {c.assignedCount || 0} Assigned Officers & Analysts
                   </span>
                 </div>
               </div>
@@ -173,6 +207,12 @@ export default function CasesPage() {
             <p className="mt-1 text-xs text-[#6B6B73]">
               Assign an official case number and court jurisdiction.
             </p>
+
+            {submitError && (
+              <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+                {submitError}
+              </div>
+            )}
 
             <form onSubmit={handleCreateCase} className="mt-4 space-y-4">
               <div>
@@ -234,15 +274,24 @@ export default function CasesPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-4 py-2 text-xs font-medium text-[#6B6B73] hover:text-[#111111]"
+                  disabled={isSubmitting}
+                  className="rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-4 py-2 text-xs font-medium text-[#6B6B73] hover:text-[#111111] disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#262626]"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#262626] disabled:opacity-50"
                 >
-                  Create Docket
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    "Create Docket"
+                  )}
                 </button>
               </div>
             </form>

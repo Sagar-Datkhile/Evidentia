@@ -26,6 +26,7 @@ interface AuthContextType {
     fullName?: string;
     phone?: string;
     avatarUrl?: string;
+    designation?: string;
   }) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: data.email || authUser.email || "",
             fullName: data.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || "Judicial Officer",
             phone: data.phone || authUser.user_metadata?.phone,
+            designation: data.designation,
             role: data.role as UserRole,
             organizationId: data.organization_id,
             badgeNumber: data.badge_number,
@@ -205,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   const updateProfile = useCallback(
-    async (updates: { fullName?: string; phone?: string; avatarUrl?: string }) => {
+    async (updates: { fullName?: string; phone?: string; avatarUrl?: string; designation?: string }) => {
       if (!user) return { success: false, error: "Not authenticated" };
 
       try {
@@ -215,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (updates.fullName !== undefined) payload.full_name = updates.fullName;
         if (updates.phone !== undefined) payload.phone = updates.phone;
         if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl;
+        if (updates.designation !== undefined) payload.designation = updates.designation;
 
         const { error } = await supabase
           .from("profiles")

@@ -522,7 +522,7 @@ function EvidenceNewForm() {
                 </>
               ) : (
                 <>
-                  Seal &amp; Register Evidence V1
+                  Seal or Register
                   <ArrowRight className="h-3.5 w-3.5" />
                 </>
               )}

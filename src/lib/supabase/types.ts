@@ -12,6 +12,7 @@ export interface UserProfile {
   email: string;
   fullName: string;
   phone?: string;
+  designation?: string;
   role: UserRole;
   organizationId?: string;
   organizationName?: string;
