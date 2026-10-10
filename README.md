@@ -294,11 +294,12 @@ Open [http://localhost:3000](http://localhost:3000) to launch Evidentia.
 
 **Evidentia Engineering Team**
 
-Interested in:
-* Cryptography & Digital Forensics
-* Zero-Trust System Architecture
-* Next.js & Full-Stack Security
-* Cloud Native Database Security & RLS
+* Backend Developer : Sagar Datkhile
+                      Girija Jadhav
+* Frontend Developer : Pranav Patil
+
+* Database Auditor : Dipali Thombare
+                     Komal Shinde 
 
 ---
 
