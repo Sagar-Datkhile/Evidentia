@@ -11,20 +11,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
     ],
-    "/auth/sign-in/page": [
+    "/evidence/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/auth/sign-in/page.js"
+      "static/chunks/app/evidence/page.js"
     ],
-    "/dashboard/page": [
+    "/api/evidence/list/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/page.js"
-    ],
-    "/cases/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/cases/page.js"
+      "static/chunks/app/api/evidence/list/route.js"
     ],
     "/evidence/new/page": [
       "static/chunks/webpack.js",
@@ -36,35 +31,50 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/cases/list/route.js"
     ],
-    "/cases/[caseId]/page": [
+    "/cases/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/cases/[caseId]/page.js"
-    ],
-    "/api/cases/[id]/assignments/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/cases/[id]/assignments/route.js"
-    ],
-    "/api/admin/users/search/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/users/search/route.js"
-    ],
-    "/profile/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/profile/page.js"
+      "static/chunks/app/cases/page.js"
     ],
     "/api/cases/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/cases/route.js"
     ],
-    "/api/cases/[id]/route": [
+    "/evidence/[evidenceId]/verify/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/cases/[id]/route.js"
+      "static/chunks/app/evidence/[evidenceId]/verify/page.js"
+    ],
+    "/custody/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/custody/page.js"
+    ],
+    "/api/evidence/register/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/evidence/register/route.js"
+    ],
+    "/evidence/[evidenceId]/timeline/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/evidence/[evidenceId]/timeline/page.js"
+    ],
+    "/api/evidence/[id]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/evidence/[id]/route.js"
+    ],
+    "/evidence/[evidenceId]/compare/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/evidence/[evidenceId]/compare/page.js"
+    ],
+    "/evidence/[evidenceId]/passport/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/evidence/[evidenceId]/passport/page.js"
     ]
   }
 }

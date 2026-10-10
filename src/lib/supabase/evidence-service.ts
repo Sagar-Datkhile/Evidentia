@@ -6,7 +6,7 @@
 
 import { createAdminClient } from "./admin";
 import { computeCommitHash } from "../crypto/commit";
-import { signAttestation, SYSTEM_SIGNING_KEY_ID } from "../crypto/ed25519";
+import { signAttestation, SYSTEM_SIGNING_KEY_ID, SYSTEM_PUBLIC_KEY_HEX } from "../crypto/ed25519";
 import { encryptPayload } from "../crypto/envelope";
 import { EvidenceItem, EvidenceVersion, EvidenceCommit, Case, UserRole, normalizeRole } from "./types";
 
@@ -155,31 +155,81 @@ export async function registerEvidence(
     throw new Error(`Version DB insert failed: ${versionInsertError.message}`);
   }
 
-  const { data: commitRow, error: commitInsertError } = await supabase
+  // 7. Insert commit with fallback for optional schema columns (e.g. merkle_status)
+  const commitInsertPayload: Record<string, any> = {
+    version_id: versionRow.id,
+    evidence_id: evidenceId,
+    commit_hash: commitHash,
+    parent_commit_hash: null,
+    commit_message: params.commitMessage,
+    note: params.note ?? null,
+    actor_id: params.actorId,
+    actor_name: params.actorName,
+    actor_role: params.actorRole,
+    server_timestamp: timestamp,
+    signature,
+    signing_key_id: SYSTEM_SIGNING_KEY_ID,
+  };
+
+  let commitRow: any = null;
+  // Try inserting with merkle_status first (if DB column is present)
+  const { data: commitWithMerkle, error: commitInsertError } = await supabase
     .from("evidence_commits")
     .insert({
-      version_id: versionRow.id,
-      evidence_id: evidenceId,
-      commit_hash: commitHash,
-      parent_commit_hash: null,
-      commit_message: params.commitMessage,
-      note: params.note ?? null,
-      actor_id: params.actorId,
-      server_timestamp: timestamp,
-      signature,
-      signing_key_id: SYSTEM_SIGNING_KEY_ID,
+      ...commitInsertPayload,
       merkle_status: "PENDING",
     })
     .select()
     .single();
 
   if (commitInsertError) {
-    await supabase.storage.from("private-evidence").remove([storagePath]);
-    throw new Error(`Commit DB insert failed: ${commitInsertError.message}`);
+    if (commitInsertError.message?.includes("fk_commit_signing_key")) {
+      await supabase.from("signing_key_metadata").upsert({
+        key_id: SYSTEM_SIGNING_KEY_ID,
+        algorithm: "Ed25519",
+        public_key_pem: SYSTEM_PUBLIC_KEY_HEX,
+        status: "ACTIVE",
+        activated_at: timestamp,
+      }, { onConflict: "key_id" });
+    }
+
+    // Determine payload without merkle_status if column is missing
+    const isMissingMerkle = commitInsertError.message?.includes("merkle_status");
+    const retryPayload = isMissingMerkle ? commitInsertPayload : { ...commitInsertPayload, merkle_status: "PENDING" };
+
+    const { data: retryData, error: retryError } = await supabase
+      .from("evidence_commits")
+      .insert(retryPayload)
+      .select()
+      .single();
+
+    if (retryError) {
+      // If failed again because of merkle_status, try once more strictly without it
+      if (retryError.message?.includes("merkle_status")) {
+        const { data: finalRetry, error: finalError } = await supabase
+          .from("evidence_commits")
+          .insert(commitInsertPayload)
+          .select()
+          .single();
+
+        if (finalError) {
+          await supabase.storage.from("private-evidence").remove([storagePath]);
+          throw new Error(`Commit DB insert failed: ${finalError.message}`);
+        }
+        commitRow = finalRetry;
+      } else {
+        await supabase.storage.from("private-evidence").remove([storagePath]);
+        throw new Error(`Commit DB insert failed: ${retryError.message}`);
+      }
+    } else {
+      commitRow = retryData;
+    }
+  } else {
+    commitRow = commitWithMerkle;
   }
 
-  // 8. Record custody event
-  await supabase.from("custody_events").insert({
+  // 8. Record custody event with support for both occurred_at and timestamp schema conventions
+  const custodyPayload: Record<string, any> = {
     evidence_id: evidenceId,
     event_type: "REGISTERED",
     actor_id: params.actorId,
@@ -190,8 +240,23 @@ export async function registerEvidence(
       commitHash,
       fileName: params.fileName,
     },
-    timestamp,
-  });
+    event_hash: commitHash,
+    occurred_at: timestamp,
+  };
+
+  const { error: custodyInsertError } = await supabase
+    .from("custody_events")
+    .insert(custodyPayload);
+
+  if (custodyInsertError && custodyInsertError.message?.includes("occurred_at")) {
+    await supabase.from("custody_events").insert({
+      evidence_id: evidenceId,
+      event_type: "REGISTERED",
+      actor_id: params.actorId,
+      details: custodyPayload.details,
+      timestamp,
+    });
+  }
 
   // 9. Map DB rows to domain types
   const evidence: EvidenceItem = {
@@ -355,7 +420,7 @@ export async function listCommitsForEvidence(
     serverTimestamp: row.server_timestamp,
     signature: row.signature,
     signingKeyId: row.signing_key_id,
-    merkleStatus: row.merkle_status,
+    merkleStatus: row.merkle_status ?? "PENDING",
     stepUpProofToken: row.step_up_proof_token,
   }));
 }
