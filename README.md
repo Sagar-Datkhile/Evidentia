@@ -78,9 +78,19 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Authentication & Role Architecture
 - **Unauthenticated State:** Landing page renders a clean "Sign In" button in the navbar. Protected routes redirect unauthenticated traffic to `/auth/sign-in`.
 - **Registration Flow:** Users register at `/auth/sign-up` with Full Name, Email, Phone Number (international format validated), and Password.
-- **Safe Default Role:** All new accounts receive the `pending` authorization status. Privileged roles (`police`, `forensic`, `prosecutor`, `admin`) are assigned exclusively by system administrators.
+- **Strict Two-Role Global Architecture:** The system uses only two global roles: `user` and `admin`. All new signups default to `user`.
+- **Case-Specific Assignments:** Investigative responsibilities (Police Officer, Forensic Analyst, Prosecutor) are handled at the *case level* via `case_assignments`. This ensures least-privilege access, as users only receive these privileges for the specific dockets they are assigned to.
 - **Elevation Protection:** PostgreSQL triggers prevent users from modifying or escalating their own role.
 - **Session Management:** Built on `@supabase/ssr` using HTTP cookies, refresh token rotation, and Next.js middleware.
+
+---
+
+## Admin Case Management
+EVIDENTIA includes a secure **Admin Console** to manage dockets and access control:
+1. **User Management:** Admins can view all registered users and securely promote/demote them (`user` ↔ `admin`).
+2. **Case Creation:** Admins can register new evidence dockets with stable Case IDs and jurisdictions.
+3. **Role-Based Case Assignments:** Admins can assign registered users to specific cases with explicit responsibilities (e.g., "Investigator", "Prosecutor").
+4. **Zero-Trust Access (RLS):** Through Supabase Row Level Security (`can_access_case`), standard users only see and interact with cases they are assigned to. Admin assignments instantly unlock the Evidence Registration dropdown for the authorized user.
 
 ---
 
