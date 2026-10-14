@@ -1,10 +1,10 @@
 {
-  "/api/evidence/register/route": "app/api/evidence/register/route.js",
+  "/api/evidence/list/route": "app/api/evidence/list/route.js",
   "/api/evidence/[id]/route": "app/api/evidence/[id]/route.js",
   "/evidence/page": "app/evidence/page.js",
-  "/evidence/new/page": "app/evidence/new/page.js",
-  "/evidence/[evidenceId]/verify/page": "app/evidence/[evidenceId]/verify/page.js",
-  "/evidence/[evidenceId]/timeline/page": "app/evidence/[evidenceId]/timeline/page.js",
-  "/evidence/[evidenceId]/compare/page": "app/evidence/[evidenceId]/compare/page.js",
-  "/evidence/[evidenceId]/passport/page": "app/evidence/[evidenceId]/passport/page.js"
+  "/custody/page": "app/custody/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/reports/page": "app/reports/page.js",
+  "/evidence/[evidenceId]/passport/page": "app/evidence/[evidenceId]/passport/page.js",
+  "/evidence/[evidenceId]/timeline/page": "app/evidence/[evidenceId]/timeline/page.js"
 }
