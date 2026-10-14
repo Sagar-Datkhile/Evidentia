@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     const adminClient = createAdminClient();
     const { data: assignments, error } = await adminClient
       .from("case_assignments")
-      .select("*, profiles(id, email, full_name, role)")
+      .select("*, profiles!case_assignments_user_id_fkey(id, email, full_name, role)")
       .eq("case_id", id);
 
     if (error) throw error;
@@ -76,15 +76,14 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     const { userId, assignedRole } = parsed.data;
 
-    const adminClient = createAdminClient();
-    const { data: assignment, error } = await adminClient
+    const { data: assignment, error } = await supabase
       .from("case_assignments")
       .insert({
         case_id: id,
         user_id: userId,
         assigned_role: assignedRole,
       })
-      .select("*, profiles(id, email, full_name, role)")
+      .select("*, profiles!case_assignments_user_id_fkey(id, email, full_name, role)")
       .single();
 
     if (error) {
@@ -130,8 +129,7 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
-    const { error } = await adminClient
+    const { error } = await supabase
       .from("case_assignments")
       .delete()
       .match({ case_id: id, user_id: userId });

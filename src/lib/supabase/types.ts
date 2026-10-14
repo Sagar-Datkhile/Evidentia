@@ -12,6 +12,7 @@ export interface UserProfile {
   email: string;
   fullName: string;
   phone?: string;
+  designation?: string;
   role: UserRole;
   organizationId?: string;
   organizationName?: string;
@@ -69,6 +70,16 @@ export interface Case {
 
 export type EvidenceCategory = "Document" | "Digital Image" | "Audio" | "Video" | "Forensic Dump" | "Other";
 
+export type VerificationStatus =
+  | "PENDING"
+  | "VERIFYING"
+  | "VERIFIED"
+  | "HASH_MATCH"
+  | "MISMATCH"
+  | "VERIFICATION_INCOMPLETE"
+  | "INTEGRITY_FAILURE"
+  | "ERROR";
+
 export interface EvidenceItem {
   id: string; // e.g. "EV-2026-0042-01"
   caseId: string;
@@ -82,6 +93,9 @@ export interface EvidenceItem {
   isSealed: boolean;
   createdBy: string;
   createdAt: string;
+  v1Sha256?: string | null;
+  fileSha256?: string | null;
+  verificationStatus?: VerificationStatus;
 }
 
 export interface EvidenceVersion {
@@ -167,6 +181,7 @@ export type CheckOutcome = "PASS" | "FAIL" | "NOT_RUN" | "UNAVAILABLE" | "PENDIN
 export interface VerificationReport {
   id: string;
   evidenceId: string;
+  targetVersionId?: string;
   targetVersionNumber: number;
   candidateSha256: string;
   referenceSha256: string;
@@ -177,13 +192,109 @@ export interface VerificationReport {
     merkleInclusion: CheckOutcome;
     commitChain: CheckOutcome;
   };
+  checkHash?: CheckOutcome;
+  checkSig?: CheckOutcome;
+  checkMerkle?: CheckOutcome;
+  checkChain?: CheckOutcome;
+  riskLevel?: string;
+  findings?: any[];
   diffSummary?: {
     additionsCount: number;
     deletionsCount: number;
     hasChanges: boolean;
-  };
-  verifierId: string;
-  verifierName: string;
+  } | null;
+  verifierId?: string | null;
+  verifierName?: string;
   createdAt: string;
   reportHash?: string;
 }
+
+export function formatVerificationStatus(status?: VerificationStatus | null): string {
+  switch (status) {
+    case "VERIFYING":
+      return "Verifying...";
+    case "VERIFIED":
+      return "Verified";
+    case "HASH_MATCH":
+      return "Hash Match";
+    case "MISMATCH":
+      return "Mismatch Detected";
+    case "VERIFICATION_INCOMPLETE":
+      return "Verification Incomplete";
+    case "INTEGRITY_FAILURE":
+      return "Integrity Failure";
+    case "ERROR":
+      return "Verification Failed";
+    case "PENDING":
+    default:
+      return "Not Verified";
+  }
+}
+
+export function getVerificationBadgeStyle(status?: VerificationStatus | null): {
+  label: string;
+  bg: string;
+  text: string;
+  border: string;
+} {
+  switch (status) {
+    case "VERIFIED":
+      return {
+        label: "Verified",
+        bg: "bg-emerald-50",
+        text: "text-emerald-800",
+        border: "border-emerald-200",
+      };
+    case "HASH_MATCH":
+      return {
+        label: "Hash Match",
+        bg: "bg-blue-50",
+        text: "text-blue-800",
+        border: "border-blue-200",
+      };
+    case "MISMATCH":
+      return {
+        label: "Mismatch Detected",
+        bg: "bg-red-50",
+        text: "text-red-800",
+        border: "border-red-200",
+      };
+    case "INTEGRITY_FAILURE":
+      return {
+        label: "Integrity Failure",
+        bg: "bg-red-50",
+        text: "text-red-900",
+        border: "border-red-300",
+      };
+    case "VERIFICATION_INCOMPLETE":
+      return {
+        label: "Verification Incomplete",
+        bg: "bg-amber-50",
+        text: "text-amber-800",
+        border: "border-amber-200",
+      };
+    case "VERIFYING":
+      return {
+        label: "Verifying...",
+        bg: "bg-neutral-100",
+        text: "text-neutral-700",
+        border: "border-neutral-300",
+      };
+    case "ERROR":
+      return {
+        label: "Verification Failed",
+        bg: "bg-red-50",
+        text: "text-red-700",
+        border: "border-red-200",
+      };
+    case "PENDING":
+    default:
+      return {
+        label: "Not Verified",
+        bg: "bg-[#F1F1F3]",
+        text: "text-[#6B6B73]",
+        border: "border-[#E5E5E7]",
+      };
+  }
+}
+

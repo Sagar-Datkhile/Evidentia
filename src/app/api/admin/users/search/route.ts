@@ -37,11 +37,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ users: [] }); // return empty early
     }
 
-    const adminClient = createAdminClient();
-    
     // Search both full_name and email using ILIKE
     // Limit to 20 to prevent excessive data exposure
-    const { data: users, error } = await adminClient
+    const { data: users, error } = await supabase
       .from("profiles")
       .select("id, email, full_name, role, avatar_url")
       .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)

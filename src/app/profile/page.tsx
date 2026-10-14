@@ -45,6 +45,7 @@ export default function ProfilePage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [designation, setDesignation] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -65,6 +66,7 @@ export default function ProfilePage() {
       setFullName(profile.fullName || "");
       setPhone(profile.phone || "");
       setAvatarUrl(profile.avatarUrl || "");
+      setDesignation(profile.designation || "");
     }
   }, [user, profile, authLoading, router]);
 
@@ -139,6 +141,7 @@ export default function ProfilePage() {
       fullName: fullName.trim(),
       phone: phone.trim() || undefined,
       avatarUrl: avatarUrl.trim() || undefined,
+      designation: designation || undefined,
     });
 
     setIsSaving(false);
@@ -317,6 +320,27 @@ export default function ProfilePage() {
                   placeholder="https://example.com/avatar.jpg"
                   className="w-full rounded-md border border-[#E5E5E7] bg-[#F9F9FA] px-3.5 py-2.5 text-xs text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none"
                 />
+              </div>
+
+              {/* Designation Dropdown */}
+              <div>
+                <label className="block text-xs font-semibold text-[#111111] mb-1.5 font-mono">
+                  Professional Designation
+                </label>
+                <select
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                  className="w-full rounded-md border border-[#E5E5E7] bg-[#F9F9FA] px-3.5 py-2.5 text-xs text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none"
+                >
+                  <option value="" disabled>Select your designation</option>
+                  <option value="Police Officer">Police Officer</option>
+                  <option value="Forensic Analyst">Forensic Analyst</option>
+                  <option value="Public Prosecutor">Public Prosecutor</option>
+                  <option value="Case Observer">Case Observer</option>
+                </select>
+                <p className="mt-1 text-[10px] text-[#6B6B73]">
+                  Your professional designation is displayed on your profile. It does not grant additional case permissions.
+                </p>
               </div>
 
               {/* Readonly Role Display */}

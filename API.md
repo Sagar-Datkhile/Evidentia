@@ -102,75 +102,146 @@
 
 ---
 
-## 3. Evidence & Versioning Endpoints
+## 3. Evidence & Verification Endpoints
 
-### 3.1 `POST /api/evidence`
-- **Description:** Register new evidence and create immutable Version 1 (`V1`).
-- **Body (Multipart FormData or JSON):**
-  ```json
-  {
-    "caseId": "CASE-2026-0042",
-    "title": "Original First Information Report (FIR)",
-    "category": "Document",
-    "incidentDate": "2026-10-01T08:30:00Z",
-    "fileSha256": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
-    "fileName": "FIR_Case_0042_Official.txt",
-    "fileSizeBytes": 4096,
-    "fileData": "<base64_or_signed_upload_key>",
-    "commitMessage": "Initial official FIR registration from Station 14"
-  }
-  ```
+### 3.1 `POST /api/evidence/register`
+- **Description:** Register new evidence, encrypt bytes via AES-256-GCM into `private-evidence`, and store canonical 64-char SHA-256 in `evidence_versions.file_sha256`. Validates client-side hash against server raw-byte recalculation.
+- **Headers:** `Authorization: Bearer <jwt>` or session cookie
+- **Body (Multipart FormData):**
+  - `file`: Raw binary file buffer
+  - `caseId`: e.g. `"CASE-2026-0105"`
+  - `title`: e.g. `"Primary Scene Inspection Report"`
+  - `category`: `"Document" | "Digital Image" | "Audio" | "Video" | "Forensic Dump" | "Other"`
+  - `commitMessage`: e.g. `"Initial registration of scene documentation"`
+  - `clientSha256` (optional): 64-char hex hash from browser preview (rejected with 400 if mismatched)
+  - `note` (optional): Custody notes
 - **Response 201:**
   ```json
   {
-    "evidenceId": "EV-2026-0042-01",
+    "evidence": {
+      "id": "CASE-2026-0105-05",
+      "caseId": "CASE-2026-0105",
+      "caseNumber": "CASE-2026-0105",
+      "title": "Primary Scene Inspection Report",
+      "category": "Document",
+      "currentVersionNumber": 1,
+      "storageBucket": "private-evidence",
+      "originalFileName": "scene_report.pdf",
+      "createdAt": "2026-10-10T06:09:40.000Z"
+    },
     "version": {
+      "id": "b3e0c7a1-...",
       "versionNumber": 1,
-      "commitHash": "a1b2c3d4...",
-      "signature": "ed25519_sig...",
-      "merkleStatus": "CHECKPOINT_PENDING"
+      "fileSha256": "b081790cec3a7732636628dcf57d5c866f8601c473ccf2bc6e100f2a0e40b48f",
+      "storagePath": "evidence/CASE-2026-0105-05/v1/scene_report.pdf.enc"
+    },
+    "commit": {
+      "id": "f8a91c2b-...",
+      "commitHash": "e1f2a3...",
+      "signature": "sig_ed25519_...",
+      "merkleStatus": "PENDING"
+    }
+  }
+  ```
+- **Error 400:** Client-Server digest mismatch or missing required fields.
+- **Error 401 / 403:** Unauthorized or user not assigned to case docket.
+
+### 3.2 `GET /api/evidence/list`
+- **Description:** Retrieve all registered evidence items accessible to the user with trusted SHA-256 and latest verification status.
+- **Headers:** `Authorization: Bearer <jwt>` or session cookie
+- **Response 200:**
+  ```json
+  {
+    "evidence": [
+      {
+        "id": "CASE-2026-0105-04",
+        "caseId": "CASE-2026-0105",
+        "caseNumber": "CASE-2026-0105",
+        "title": "DSA Checklist",
+        "category": "Document",
+        "currentVersionNumber": 1,
+        "v1Sha256": "a3c4065ee2ea8d3a3ea725d9f7066e3325bd11f2d019757ade43ff98eedf97d6",
+        "fileSha256": "a3c4065ee2ea8d3a3ea725d9f7066e3325bd11f2d019757ade43ff98eedf97d6",
+        "verificationStatus": "HASH_MATCH"
+      }
+    ]
+  }
+  ```
+
+### 3.3 `GET /api/evidence/:id`
+- **Description:** Retrieve complete evidence record, version lineage, commits, custody events, and latest verification report.
+- **Headers:** `Authorization: Bearer <jwt>` or session cookie
+- **Response 200:**
+  ```json
+  {
+    "evidence": {
+      "id": "CASE-2026-0105-04",
+      "v1Sha256": "a3c4065ee2ea8d3a3ea725d9f7066e3325bd11f2d019757ade43ff98eedf97d6",
+      "fileSha256": "a3c4065ee2ea8d3a3ea725d9f7066e3325bd11f2d019757ade43ff98eedf97d6",
+      "verificationStatus": "HASH_MATCH"
+    },
+    "versions": [...],
+    "commits": [...],
+    "custodyEvents": [...],
+    "verificationReports": [...],
+    "latestReport": {
+      "verdict": "VERIFICATION_INCOMPLETE",
+      "check_hash": "PASS"
     }
   }
   ```
 
-### 3.2 `POST /api/evidence/:id/versions`
-- **Description:** Create a new authorized evidence version (V2, V3...).
-- **Body:**
-  ```json
-  {
-    "parentVersionNumber": 1,
-    "parentCommitHash": "a1b2c3d4...",
-    "fileSha256": "8c4129...",
-    "fileName": "FIR_Case_0042_Revised.txt",
-    "commitMessage": "Added supplemental witness statements from Inspector Roy",
-    "note": "Section 4(b) updated per judicial order",
-    "stepUpProofToken": "vprf_991823a7"
-  }
-  ```
-
-### 3.3 `POST /api/evidence/:id/verify`
-- **Description:** Deterministic tamper detection against a candidate file.
-- **Body:**
-  ```json
-  {
-    "targetVersionNumber": 1,
-    "candidateSha256": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
-    "candidateContent": "<optional_text_content_for_diff>"
-  }
-  ```
-- **Response 200:**
+### 3.4 `POST /api/evidence/:id/verify`
+- **Description:** Authenticated verification engine. Decrypts stored ciphertext from private Supabase Storage, calculates raw-byte SHA-256, verifies Ed25519 commit signatures, checks Merkle batches, checks parent lineage, and persists findings to `verification_reports`.
+- **Headers:** `Authorization: Bearer <jwt>` or session cookie
+- **Body Options (JSON):**
+  - `{ "verifyStoredFile": true }` (Default: Decrypts and verifies stored ciphertext bytes)
+  - `{ "candidateSha256": "<64_char_hex>" }` (Compares candidate hash against trusted reference)
+  - `{ "targetVersionNumber": 1, "candidateContent": "<optional_text_diff>" }`
+- **Response 200 (Success / Match):**
   ```json
   {
     "verdict": "INTEGRITY_VERIFIED",
+    "status": "VERIFIED",
+    "uiLabel": "Verified",
     "checks": {
-      "sha256Comparison": "PASS",
+      "rawByteHashMatch": "PASS",
       "commitSignature": "PASS",
       "merkleInclusionProof": "PASS",
-      "commitChainIntegrity": "PASS"
+      "parentCommitChain": "PASS"
     },
-    "referenceHash": "4b2277...",
-    "candidateHash": "4b2277...",
-    "timestamp": "2026-10-10T03:26:00Z"
+    "referenceSha256": "a3c4065ee2ea8d3a3ea725d9f7066e3325bd11f2d019757ade43ff98eedf97d6",
+    "candidateSha256": "a3c4065ee2ea8d3a3ea725d9f7066e3325bd11f2d019757ade43ff98eedf97d6",
+    "verifiedAt": "2026-10-10T06:09:40.000Z",
+    "verifiedBy": "Steve Rogers"
+  }
+  ```
+- **Response 200 (Hash Match, Pending Merkle Batch):**
+  ```json
+  {
+    "verdict": "VERIFICATION_INCOMPLETE",
+    "status": "HASH_MATCH",
+    "uiLabel": "Hash Match",
+    "checks": {
+      "rawByteHashMatch": "PASS",
+      "commitSignature": "PASS",
+      "merkleInclusionProof": "PENDING",
+      "parentCommitChain": "PASS"
+    }
+  }
+  ```
+- **Response 200 (Tampered / Altered Content):**
+  ```json
+  {
+    "verdict": "CONTENT_MISMATCH",
+    "status": "MISMATCH",
+    "uiLabel": "Mismatch Detected",
+    "checks": {
+      "rawByteHashMatch": "FAIL",
+      "commitSignature": "PASS",
+      "merkleInclusionProof": "PENDING",
+      "parentCommitChain": "PASS"
+    }
   }
   ```
 

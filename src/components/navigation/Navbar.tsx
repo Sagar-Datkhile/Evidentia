@@ -35,7 +35,7 @@ function getInitials(name?: string | null, email?: string | null): string {
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, profile, isLoading, isPending, canRegister, signOut } = useAuth();
+  const { user, profile, isLoading, isPending, signOut } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -78,7 +78,6 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#E5E5E7] bg-[#F9F9FA]/90 backdrop-blur-md transition-all">
       <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-
         {/* ── Brand & Logo (left) ─────────────────────────────── */}
         <Link href="/" className="group flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded border border-[#111111] bg-[#111111] text-[#FFFFFF] shadow-sm transition-transform group-hover:scale-105">
@@ -128,11 +127,7 @@ export function Navbar() {
               Sign In
             </Link>
           ) : (
-            <>
-
-
-              {/* Profile Pill */}
-              <div className="relative" ref={dropdownRef}>
+            <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   className="flex items-center gap-2.5 rounded-xl border border-[#E5E5E7] bg-white px-3 py-2 text-xs font-medium text-[#111111] shadow-subtle transition-all hover:border-[#111111] hover:shadow-editorial"
@@ -255,7 +250,6 @@ export function Navbar() {
                   </div>
                 )}
               </div>
-            </>
           )}
         </div>
 
@@ -359,16 +353,6 @@ export function Navbar() {
                 </Link>
               );
             })}
-
-            {user && canRegister && (
-              <Link
-                href="/evidence/new"
-                onClick={() => setMobileMenuOpen(false)}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md bg-[#111111] py-2.5 text-xs font-semibold text-[#FFFFFF]"
-              >
-                + Register New Evidence
-              </Link>
-            )}
           </div>
         </div>
       )}

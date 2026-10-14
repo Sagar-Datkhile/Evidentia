@@ -3,23 +3,16 @@
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import {
-  GitBranch,
   GitCommit,
-  ArrowRightLeft,
   Shield,
   FileCheck,
-  CheckCircle2,
   Clock,
-  User,
   Hash,
-  KeyRound,
   FileText,
-  X,
+  AlertCircle,
+  Loader2,
   ArrowRight,
-  ExternalLink,
-  Lock,
 } from "lucide-react";
-import { evidenceStore } from "@/lib/data/store";
 import { formatShortHash } from "@/lib/crypto/sha256";
 import { generateInclusionProof } from "@/lib/crypto/merkle";
 import {
@@ -37,43 +30,67 @@ export default function EvidenceTimelinePage({ params }: PageProps) {
   const resolvedParams = use(params);
   const evidenceId = resolvedParams.evidenceId;
 
-  const [evidenceItem, setEvidenceItem] = useState<EvidenceItem | undefined>(undefined);
+  const [evidenceItem, setEvidenceItem] = useState<EvidenceItem | null>(null);
   const [versions, setVersions] = useState<EvidenceVersion[]>([]);
   const [commits, setCommits] = useState<EvidenceCommit[]>([]);
   const [custodyEvents, setCustodyEvents] = useState<CustodyEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Selected Node Drawer
   const [selectedCommit, setSelectedCommit] = useState<EvidenceCommit | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<EvidenceVersion | null>(null);
   const [selectedProof, setSelectedProof] = useState<any>(null);
 
+  // Load from Supabase API
   useEffect(() => {
-    const item = evidenceStore.getEvidenceById(evidenceId);
-    setEvidenceItem(item);
-    if (item) {
-      const vList = evidenceStore.getVersionsByEvidenceId(item.id);
-      setVersions(vList);
-      const cList = evidenceStore.getCommitsByEvidenceId(item.id);
-      setCommits(cList);
-      const eList = evidenceStore.getCustodyEventsByEvidenceId(item.id);
-      setCustodyEvents(eList);
+    setIsLoading(true);
+    setFetchError(null);
 
-      if (cList.length > 0 && vList.length > 0) {
-        handleSelectNode(cList[cList.length - 1], vList[vList.length - 1]);
-      }
-    }
+    fetch(`/api/evidence/${evidenceId}`)
+      .then((res) => {
+        if (!res.ok) {
+          return res.json().then((d) => { throw new Error(d.error ?? `HTTP ${res.status}`); });
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setEvidenceItem(data.evidence);
+        setVersions(data.versions ?? []);
+        setCommits(data.commits ?? []);
+        setCustodyEvents(data.custodyEvents ?? []);
+
+        // Auto-select the latest commit
+        const cList: EvidenceCommit[] = data.commits ?? [];
+        const vList: EvidenceVersion[] = data.versions ?? [];
+        if (cList.length > 0 && vList.length > 0) {
+          const latestCommit = cList[cList.length - 1];
+          const matchedVersion = vList.find((v) => v.id === latestCommit.versionId) ?? vList[vList.length - 1];
+          handleSelectNode(latestCommit, matchedVersion, vList);
+        }
+      })
+      .catch((err) => {
+        setFetchError(err.message ?? "Failed to load evidence timeline.");
+      })
+      .finally(() => setIsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evidenceId]);
 
-  const handleSelectNode = async (commit: EvidenceCommit, version: EvidenceVersion) => {
+  const handleSelectNode = async (
+    commit: EvidenceCommit,
+    version: EvidenceVersion,
+    allVersions?: EvidenceVersion[]
+  ) => {
     setSelectedCommit(commit);
     setSelectedVersion(version);
 
-    // Compute Merkle proof for this version
-    const checkpoint = evidenceStore.getCheckpoint();
-    const idx = checkpoint.leafHashes.indexOf(version.fileSha256);
-    if (idx >= 0) {
+    // Compute a simple Merkle proof from known leaf hashes
+    const vList = allVersions ?? versions;
+    const leafHashes = vList.map((v) => v.fileSha256);
+    const idx = leafHashes.indexOf(version.fileSha256);
+    if (idx >= 0 && leafHashes.length > 0) {
       try {
-        const proof = await generateInclusionProof(checkpoint.leafHashes, idx);
+        const proof = await generateInclusionProof(leafHashes, idx);
         setSelectedProof(proof);
       } catch {
         setSelectedProof(null);
@@ -83,10 +100,24 @@ export default function EvidenceTimelinePage({ params }: PageProps) {
     }
   };
 
-  if (!evidenceItem) {
+  if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <h1 className="font-heading text-xl font-bold text-[#111111]">Loading Commit Graph...</h1>
+        <Loader2 className="h-6 w-6 animate-spin text-[#6B6B73] mx-auto mb-3" />
+        <p className="text-sm text-[#6B6B73]">Loading commit graph from Supabase…</p>
+      </div>
+    );
+  }
+
+  if (fetchError || !evidenceItem) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-16 text-center">
+        <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-3" />
+        <h1 className="font-heading text-xl font-bold text-[#111111] mb-2">Evidence Not Found</h1>
+        <p className="text-sm text-[#6B6B73] mb-6">{fetchError ?? "This evidence record does not exist or you don't have access."}</p>
+        <Link href="/evidence" className="rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-white hover:bg-[#262626] transition-colors">
+          ← Back to Evidence
+        </Link>
       </div>
     );
   }
@@ -124,17 +155,11 @@ export default function EvidenceTimelinePage({ params }: PageProps) {
               Evidence Timeline & Commit Graph: {evidenceItem.title}
             </h1>
             <p className="mt-1 text-xs text-[#6B6B73]">
-              Non-destructive lineage tracking combining immutable version commits, cryptographic parent links, and physical/digital custody handoffs.
+              Non-destructive lineage tracking — immutable version commits, cryptographic parent links, and physical/digital custody handoffs.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <Link
-              href={`/evidence/${evidenceItem.id}/versions`}
-              className="flex items-center gap-1.5 rounded-md bg-[#111111] px-3.5 py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors"
-            >
-              + Create Version V{evidenceItem.currentVersionNumber + 1}
-            </Link>
             <Link
               href={`/evidence/${evidenceItem.id}/verify`}
               className="flex items-center gap-1.5 rounded-md border border-[#E5E5E7] bg-[#FFFFFF] px-3.5 py-2 text-xs font-semibold text-[#111111] hover:border-[#111111] transition-colors"
@@ -170,84 +195,90 @@ export default function EvidenceTimelinePage({ params }: PageProps) {
               </span>
             </div>
 
-            {/* Commit Graph Nodes */}
-            <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E5E5E7]">
-              {commits.map((commit, idx) => {
-                const ver = versions.find((v) => v.id === commit.versionId);
-                const isSelected = selectedCommit?.id === commit.id;
-                const isGenesis = commit.parentCommitHash === null;
+            {commits.length === 0 ? (
+              <div className="py-10 text-center text-sm text-[#6B6B73]">
+                No commits recorded yet for this evidence.
+              </div>
+            ) : (
+              /* Commit Graph Nodes */
+              <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E5E5E7]">
+                {commits.map((commit) => {
+                  const ver = versions.find((v) => v.id === commit.versionId);
+                  const isSelected = selectedCommit?.id === commit.id;
+                  const isGenesis = commit.parentCommitHash === null || commit.parentCommitHash === undefined;
 
-                return (
-                  <div key={commit.id} className="relative group">
-                    {/* Graph Node Circle */}
-                    <button
-                      onClick={() => ver && handleSelectNode(commit, ver)}
-                      className={`absolute -left-[35px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-transform group-hover:scale-110 ${
-                        isSelected
-                          ? "border-[#111111] bg-[#111111] text-[#FFFFFF] ring-4 ring-[#E5E5E7]"
-                          : isGenesis
-                          ? "border-emerald-600 bg-[#FFFFFF] text-emerald-800"
-                          : "border-[#111111] bg-[#FFFFFF] text-[#111111]"
-                      }`}
-                    >
-                      <GitCommit className="h-3 w-3" />
-                    </button>
+                  return (
+                    <div key={commit.id} className="relative group">
+                      {/* Graph Node Circle */}
+                      <button
+                        onClick={() => ver && handleSelectNode(commit, ver)}
+                        className={`absolute -left-[35px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-transform group-hover:scale-110 ${
+                          isSelected
+                            ? "border-[#111111] bg-[#111111] text-[#FFFFFF] ring-4 ring-[#E5E5E7]"
+                            : isGenesis
+                            ? "border-emerald-600 bg-[#FFFFFF] text-emerald-800"
+                            : "border-[#111111] bg-[#FFFFFF] text-[#111111]"
+                        }`}
+                      >
+                        <GitCommit className="h-3 w-3" />
+                      </button>
 
-                    {/* Commit Card */}
-                    <div
-                      onClick={() => ver && handleSelectNode(commit, ver)}
-                      className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                        isSelected
-                          ? "border-[#111111] bg-[#F9F9FA] shadow-subtle"
-                          : "border-[#E5E5E7] bg-[#FFFFFF] hover:border-[#111111]"
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-[#111111]">
-                            Version {ver?.versionNumber || 1}
-                          </span>
-                          {isGenesis && (
-                            <span className="rounded bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-800 border border-emerald-200">
-                              GENESIS V1 SEALED
+                      {/* Commit Card */}
+                      <div
+                        onClick={() => ver && handleSelectNode(commit, ver)}
+                        className={`cursor-pointer rounded-xl border p-4 transition-all ${
+                          isSelected
+                            ? "border-[#111111] bg-[#F9F9FA] shadow-subtle"
+                            : "border-[#E5E5E7] bg-[#FFFFFF] hover:border-[#111111]"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#111111]">
+                              Version {ver?.versionNumber ?? "—"}
                             </span>
-                          )}
-                          <span className="rounded bg-[#F1F1F3] px-2 py-0.5 font-mono text-[10px] text-[#6B6B73]">
-                            {commit.merkleStatus}
+                            {isGenesis && (
+                              <span className="rounded bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-800 border border-emerald-200">
+                                GENESIS V1 SEALED
+                              </span>
+                            )}
+                            <span className="rounded bg-[#F1F1F3] px-2 py-0.5 font-mono text-[10px] text-[#6B6B73]">
+                              {commit.merkleStatus}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[11px] text-[#8E8E93]">
+                            {new Date(commit.serverTimestamp).toLocaleString()}
                           </span>
                         </div>
-                        <span className="font-mono text-[11px] text-[#8E8E93]">
-                          {new Date(commit.serverTimestamp).toLocaleString()}
-                        </span>
-                      </div>
 
-                      <h3 className="font-heading text-sm font-bold text-[#111111]">
-                        {commit.commitMessage}
-                      </h3>
+                        <h3 className="font-heading text-sm font-bold text-[#111111]">
+                          {commit.commitMessage}
+                        </h3>
 
-                      {commit.note && (
-                        <p className="mt-1 text-xs text-[#6B6B73] italic">
-                          &ldquo;{commit.note}&rdquo;
-                        </p>
-                      )}
+                        {commit.note && (
+                          <p className="mt-1 text-xs text-[#6B6B73] italic">
+                            &ldquo;{commit.note}&rdquo;
+                          </p>
+                        )}
 
-                      <div className="mt-3 pt-2.5 border-t border-[#F1F1F3] flex flex-wrap items-center justify-between text-xs text-[#6B6B73] font-mono text-[11px]">
-                        <div>
-                          <span>Commit: </span>
-                          <span className="font-bold text-[#111111]">
-                            {formatShortHash(commit.commitHash, 6, 6)}
-                          </span>
-                        </div>
-                        <div>
-                          <span>Submitted by: </span>
-                          <span className="font-semibold text-[#111111]">{commit.actorName}</span>
+                        <div className="mt-3 pt-2.5 border-t border-[#F1F1F3] flex flex-wrap items-center justify-between text-xs text-[#6B6B73] font-mono text-[11px]">
+                          <div>
+                            <span>Commit: </span>
+                            <span className="font-bold text-[#111111]">
+                              {formatShortHash(commit.commitHash, 6, 6)}
+                            </span>
+                          </div>
+                          <div>
+                            <span>By: </span>
+                            <span className="font-semibold text-[#111111]">{commit.actorName}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Integrated Custody Events Timeline */}
@@ -256,25 +287,30 @@ export default function EvidenceTimelinePage({ params }: PageProps) {
               Physical & Digital Custody Transfer Log
             </h3>
 
-            <div className="relative pl-6 space-y-4 border-l border-[#E5E5E7]">
-              {custodyEvents.map((evt) => (
-                <div key={evt.id} className="relative">
-                  <div className="absolute -left-[29px] top-1 h-3 w-3 rounded-full border-2 border-[#FFFFFF] bg-[#111111]" />
-                  <div className="flex items-center justify-between text-[11px] font-mono text-[#6B6B73]">
-                    <span className="font-bold text-[#111111]">{evt.eventType}</span>
-                    <span>{new Date(evt.timestamp).toLocaleString()}</span>
+            {custodyEvents.length === 0 ? (
+              <div className="py-8 text-center text-sm text-[#6B6B73]">
+                No custody events recorded.
+              </div>
+            ) : (
+              <div className="relative pl-6 space-y-4 border-l border-[#E5E5E7]">
+                {custodyEvents.map((evt) => (
+                  <div key={evt.id} className="relative">
+                    <div className="absolute -left-[29px] top-1 h-3 w-3 rounded-full border-2 border-[#FFFFFF] bg-[#111111]" />
+                    <div className="flex items-center justify-between text-[11px] font-mono text-[#6B6B73]">
+                      <span className="font-bold text-[#111111]">{evt.eventType}</span>
+                      <span>{new Date(evt.timestamp).toLocaleString()}</span>
+                    </div>
+                    {evt.details && (
+                      <p className="text-[11px] text-[#6B6B73] font-mono mt-0.5">
+                        {typeof evt.details === "object"
+                          ? JSON.stringify(evt.details)
+                          : String(evt.details)}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-xs text-[#111111] font-medium mt-0.5">
-                    Handoff by {evt.actorName}
-                  </p>
-                  {evt.details && (
-                    <p className="text-[11px] text-[#6B6B73] font-mono mt-0.5">
-                      {JSON.stringify(evt.details)}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -386,7 +422,7 @@ export default function EvidenceTimelinePage({ params }: PageProps) {
                   className="flex items-center justify-center gap-1.5 w-full rounded-md bg-[#111111] py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors"
                 >
                   <FileCheck className="h-3.5 w-3.5" />
-                  View Full Evidence Passport
+                  View Full Evidence Report
                 </Link>
               </div>
             </div>

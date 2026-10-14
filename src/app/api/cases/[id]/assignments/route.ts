@@ -11,6 +11,7 @@ const assignmentSchema = z.object({
 export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
     const { id: caseId } = await props.params;
+    console.log(`[Assignments GET] Hit for caseId: ${caseId}`);
     const supabase = await createServerSupabaseClient();
     const {
       data: { user: callerUser },
@@ -21,11 +22,16 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify case access (admin or assigned user)
-    const { data: canAccess, error: accessError } = await supabase
-      .rpc('can_access_case', { p_case_id: caseId, p_user_id: callerUser.id });
+    // Verify case access by checking if RLS allows us to read the case
+    console.log(`[Assignments GET] Checking access for user: ${callerUser.id} via cases table`);
+    const { data: caseRecord, error: accessError } = await supabase
+      .from('cases')
+      .select('id')
+      .eq('id', caseId)
+      .maybeSingle();
 
-    if (accessError || !canAccess) {
+    console.log(`[Assignments GET] accessError: ${accessError?.message}`);
+    if (accessError || !caseRecord) {
       return NextResponse.json({ error: "Forbidden: Not authorized to view this case" }, { status: 403 });
     }
 
@@ -33,13 +39,18 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     // or standard client if RLS permits profiles read (which it does: "Profiles readable by authenticated users")
     const { data: assignments, error } = await supabase
       .from("case_assignments")
-      .select("*, profiles(id, email, full_name, role)")
+      .select("*, profiles!case_assignments_user_id_fkey(id, email, full_name, role)")
       .eq("case_id", caseId);
 
-    if (error) throw error;
+    if (error) {
+      console.error("[Assignments GET Error]:", error);
+      return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+    }
 
+    console.log(`[Assignments GET] Returned ${assignments?.length} assignments`);
     return NextResponse.json({ assignments });
   } catch (err: any) {
+    console.error("[Assignments Catch Error]:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
@@ -76,17 +87,15 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     const { userId, assignedRole } = parsed.data;
 
-    const adminClient = createAdminClient();
-    
     // Insert assignment
-    const { data: assignment, error } = await adminClient
+    const { data: assignment, error } = await supabase
       .from("case_assignments")
       .insert({
         case_id: caseId,
         user_id: userId,
         assigned_role: assignedRole,
       })
-      .select("*, profiles(id, email, full_name, role)")
+      .select("*, profiles!case_assignments_user_id_fkey(id, email, full_name, role)")
       .single();
 
     if (error) {
@@ -97,7 +106,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     }
 
     // Log the assignment event
-    await adminClient.from("audit_events").insert({
+    await supabase.from("audit_events").insert({
       event_type: 'CASE_ACCESS_GRANTED',
       actor_id: callerUser.id,
       target_entity: 'case_assignments',
@@ -147,10 +156,8 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
-
     // Perform deletion
-    const { error } = await adminClient
+    const { error } = await supabase
       .from("case_assignments")
       .delete()
       .match({ case_id: caseId, user_id: userId });
@@ -158,7 +165,7 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
     if (error) throw error;
 
     // Log revocation for audit-backed mechanism
-    await adminClient.from("audit_events").insert({
+    await supabase.from("audit_events").insert({
       event_type: 'CASE_ACCESS_REVOKED',
       actor_id: callerUser.id,
       target_entity: 'case_assignments',

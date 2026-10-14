@@ -24,7 +24,7 @@ import {
   evidenceStore,
   DEMO_USERS,
 } from "@/lib/data/store";
-import { UserProfile, Case, EvidenceItem, CustodyTransfer, CustodyEvent, formatRoleLabel } from "@/lib/supabase/types";
+import { UserProfile, Case, EvidenceItem, CustodyTransfer, CustodyEvent, formatRoleLabel, getVerificationBadgeStyle } from "@/lib/supabase/types";
 import { formatShortHash } from "@/lib/crypto/sha256";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -51,6 +51,19 @@ export default function DashboardPage() {
     const refreshData = () => {
       setCases(evidenceStore.getCases());
       setEvidenceList(evidenceStore.getAllEvidence());
+
+      fetch("/api/evidence/list")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((d) => {
+          if (d?.evidence && d.evidence.length > 0) {
+            const apiItems: EvidenceItem[] = d.evidence;
+            const demoItems = evidenceStore.getAllEvidence();
+            const ids = new Set(apiItems.map((e) => e.id));
+            setEvidenceList([...apiItems, ...demoItems.filter((e) => !ids.has(e.id))]);
+          }
+        })
+        .catch(() => {});
+
       const allTransfers: CustodyTransfer[] = [];
       const allEvents: CustodyEvent[] = [];
       for (const e of evidenceStore.getAllEvidence()) {
@@ -265,6 +278,16 @@ export default function DashboardPage() {
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-[#6B6B73]">
                         {item.category}
                       </span>
+                      {(() => {
+                        const b = getVerificationBadgeStyle(item.verificationStatus);
+                        return (
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold border ${b.bg} ${b.text} ${b.border}`}
+                          >
+                            {b.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <h3 className="mt-1 text-xs font-semibold text-[#111111]">{item.title}</h3>
                     <p className="text-[11px] text-[#8E8E93] mt-0.5 font-mono">
@@ -290,7 +313,7 @@ export default function DashboardPage() {
                       href={`/evidence/${item.id}/passport`}
                       className="rounded bg-[#111111] px-2.5 py-1 text-[11px] font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors"
                     >
-                      Passport
+                      Report
                     </Link>
                   </div>
                 </div>

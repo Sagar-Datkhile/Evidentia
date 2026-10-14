@@ -14,7 +14,7 @@ import {
   GitCommit,
 } from "lucide-react";
 import { evidenceStore } from "@/lib/data/store";
-import { EvidenceItem } from "@/lib/supabase/types";
+import { EvidenceItem, getVerificationBadgeStyle } from "@/lib/supabase/types";
 import { formatShortHash } from "@/lib/crypto/sha256";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -184,13 +184,19 @@ export default function EvidenceListPage() {
                     <th className="px-4 py-3 font-semibold">Category</th>
                     <th className="px-4 py-3 font-semibold">Version</th>
                     <th className="px-5 py-3 font-semibold">V1 Hash</th>
+                    <th className="px-4 py-3 font-semibold">Integrity</th>
                     <th className="px-5 py-3 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F1F3] text-xs">
                   {filteredEvidence.map((item) => {
-                    const v1 = evidenceStore.getVersion(item.id, 1);
-                    const hash = v1?.fileSha256 ?? "—";
+                    const hash =
+                      item.v1Sha256 ||
+                      item.fileSha256 ||
+                      evidenceStore.getVersion(item.id, 1)?.fileSha256 ||
+                      null;
+                    const badge = getVerificationBadgeStyle(item.verificationStatus);
+
                     return (
                       <tr key={item.id} className="hover:bg-[#F9F9FA] transition-colors">
                         <td className="px-5 py-4 font-mono font-bold text-[#111111] whitespace-nowrap">
@@ -213,8 +219,8 @@ export default function EvidenceListPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 font-mono text-[11px] text-[#6B6B73] whitespace-nowrap">
-                          {hash === "—" ? (
-                            <span className="text-amber-600 font-mono text-[10px]">pending</span>
+                          {!hash ? (
+                            <span className="text-[#8E8E93] font-mono text-[10px]">Hash unavailable</span>
                           ) : (
                             <div className="flex items-center gap-1.5">
                               <span>{formatShortHash(hash, 6, 6)}</span>
@@ -231,6 +237,13 @@ export default function EvidenceListPage() {
                               </button>
                             </div>
                           )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-mono font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
+                          >
+                            {badge.label}
+                          </span>
                         </td>
                         <td className="px-5 py-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
@@ -250,7 +263,7 @@ export default function EvidenceListPage() {
                               href={`/evidence/${item.id}/passport`}
                               className="rounded bg-[#111111] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#262626]"
                             >
-                              Passport
+                              Report
                             </Link>
                           </div>
                         </td>
@@ -264,8 +277,13 @@ export default function EvidenceListPage() {
             {/* Mobile Card Fallback */}
             <div className="block md:hidden divide-y divide-[#F1F1F3]">
               {filteredEvidence.map((item) => {
-                const v1 = evidenceStore.getVersion(item.id, 1);
-                const hash = v1?.fileSha256 ?? "—";
+                const hash =
+                  item.v1Sha256 ||
+                  item.fileSha256 ||
+                  evidenceStore.getVersion(item.id, 1)?.fileSha256 ||
+                  null;
+                const badge = getVerificationBadgeStyle(item.verificationStatus);
+
                 return (
                   <div key={item.id} className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -277,6 +295,11 @@ export default function EvidenceListPage() {
                         <span className="rounded bg-slate-900 px-2 py-0.5 text-[10px] font-mono font-semibold text-white">
                           V{item.currentVersionNumber}
                         </span>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
+                        >
+                          {badge.label}
+                        </span>
                       </div>
                     </div>
 
@@ -287,17 +310,19 @@ export default function EvidenceListPage() {
                       </p>
                     </div>
 
-                    {hash !== "—" && (
-                      <div className="flex items-center justify-between rounded bg-[#F9F9FA] p-2 font-mono text-[10px] text-[#6B6B73]">
-                        <span>V1 Hash: {formatShortHash(hash, 6, 6)}</span>
+                    <div className="flex items-center justify-between rounded bg-[#F9F9FA] p-2 font-mono text-[10px] text-[#6B6B73]">
+                      <span>
+                        V1 Hash: {hash ? formatShortHash(hash, 6, 6) : "Unavailable"}
+                      </span>
+                      {hash && (
                         <button
                           onClick={() => copyToClipboard(hash, item.id)}
                           className="text-[#111111] font-semibold flex items-center gap-1"
                         >
                           {copiedId === item.id ? "Copied" : "Copy"}
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     <div className="grid grid-cols-3 gap-2 pt-1">
                       <Link
@@ -316,7 +341,7 @@ export default function EvidenceListPage() {
                         href={`/evidence/${item.id}/passport`}
                         className="rounded bg-[#111111] py-1.5 text-center text-[11px] font-semibold text-white"
                       >
-                        Passport
+                        Report
                       </Link>
                     </div>
                   </div>

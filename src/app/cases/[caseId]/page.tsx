@@ -20,6 +20,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { evidenceStore } from "@/lib/data/store";
+import { formatShortHash } from "@/lib/crypto/sha256";
+import { getVerificationBadgeStyle } from "@/lib/supabase/types";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 interface PageProps {
@@ -269,7 +271,7 @@ function CaseParticipants({ caseId }: { caseId: string }) {
         <div className="mt-3 flex flex-wrap gap-2">
           {assignments.map((a) => (
             <div
-              key={a.id}
+              key={`${a.case_id}-${a.user_id}`}
               className="group flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-[#F9F9FA] pl-3 pr-1 py-1 text-xs transition-colors hover:border-[#D1D1D6]"
             >
               <div className="flex items-center gap-2">
@@ -300,13 +302,50 @@ function CaseParticipants({ caseId }: { caseId: string }) {
 
 export default function CaseDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
-  const caseItem = evidenceStore.getCaseById(resolvedParams.caseId);
+  
+  const [caseItem, setCaseItem] = useState<any>(null);
+  const [evidenceList, setEvidenceList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (!caseItem) {
+  useEffect(() => {
+    async function loadCase() {
+      try {
+        const res = await fetch(`/api/cases/${encodeURIComponent(resolvedParams.caseId)}`);
+        if (!res.ok) {
+          throw new Error("Case not found or unauthorized");
+        }
+        const data = await res.json();
+        setCaseItem(data.case);
+        const apiEvidence = data.evidence || [];
+        const demoEvidence = evidenceStore.getEvidenceByCaseId(resolvedParams.caseId);
+        const ids = new Set(apiEvidence.map((e: any) => e.id));
+        setEvidenceList([...apiEvidence, ...demoEvidence.filter((e) => !ids.has(e.id))]);
+      } catch (err: any) {
+        setErrorMsg(err.message);
+        // Fallback to demo evidence
+        const demoEvidence = evidenceStore.getEvidenceByCaseId(resolvedParams.caseId);
+        setEvidenceList(demoEvidence);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadCase();
+  }, [resolvedParams.caseId]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#111111]" />
+      </div>
+    );
+  }
+
+  if (errorMsg || !caseItem) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">
         <h1 className="font-heading text-2xl font-bold text-[#111111]">Case Docket Not Found</h1>
-        <p className="mt-2 text-xs text-[#6B6B73]">The requested case ID &quot;{resolvedParams.caseId}&quot; does not exist.</p>
+        <p className="mt-2 text-xs text-[#6B6B73]">The requested case ID &quot;{resolvedParams.caseId}&quot; does not exist or you do not have permission.</p>
         <Link
           href="/cases"
           className="mt-6 inline-flex rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-white"
@@ -316,8 +355,6 @@ export default function CaseDetailPage({ params }: PageProps) {
       </div>
     );
   }
-
-  const evidenceList = evidenceStore.getEvidenceByCaseId(caseItem.id);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -398,32 +435,55 @@ export default function CaseDetailPage({ params }: PageProps) {
           </div>
         ) : (
           <div className="divide-y divide-[#F1F1F3]">
-            {evidenceList.map((item) => (
-              <div
-                key={item.id}
-                className="py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="font-mono text-xs font-bold text-[#111111]">{item.id}</span>
-                    <span className="rounded bg-[#F1F1F3] px-2 py-0.5 font-mono text-[10px] font-medium text-[#111111]">
-                      Version {item.currentVersionNumber}
-                    </span>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-[#6B6B73]">
-                      {item.category}
-                    </span>
-                    {item.isSealed && (
-                      <span className="rounded bg-amber-50 px-2 py-0.5 font-mono text-[10px] text-amber-800 border border-amber-200">
-                        SEALED
-                      </span>
-                    )}
-                  </div>
+            {evidenceList.map((item) => {
+              const hash =
+                item.v1Sha256 ||
+                item.fileSha256 ||
+                evidenceStore.getVersion(item.id, 1)?.fileSha256 ||
+                null;
+              const badge = getVerificationBadgeStyle(item.verificationStatus);
 
-                  <h3 className="font-heading text-sm font-bold text-[#111111]">{item.title}</h3>
-                  <p className="mt-1 text-xs text-[#6B6B73] font-mono">
-                    Original File: {item.originalFileName} &middot; Bucket: {item.storageBucket}
-                  </p>
-                </div>
+              return (
+                <div
+                  key={item.id}
+                  className="py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-[#111111]">{item.id}</span>
+                      <span className="rounded bg-[#F1F1F3] px-2 py-0.5 font-mono text-[10px] font-medium text-[#111111]">
+                        Version {item.currentVersionNumber}
+                      </span>
+                      <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-[#6B6B73]">
+                        {item.category}
+                      </span>
+                      {item.isSealed && (
+                        <span className="rounded bg-amber-50 px-2 py-0.5 font-mono text-[10px] text-amber-800 border border-amber-200">
+                          SEALED
+                        </span>
+                      )}
+                      <span
+                        className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-mono font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+
+                    <h3 className="font-heading text-sm font-bold text-[#111111]">{item.title}</h3>
+                    <p className="mt-1 text-xs text-[#6B6B73] font-mono">
+                      Original File: {item.originalFileName} &middot; Bucket: {item.storageBucket}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-mono text-[#6B6B73]">
+                      SHA-256:{" "}
+                      {hash ? (
+                        <span className="text-[#111111] font-semibold" title={hash}>
+                          {formatShortHash(hash, 8, 8)}
+                        </span>
+                      ) : (
+                        <span className="text-[#8E8E93] italic">Hash unavailable</span>
+                      )}
+                    </p>
+                  </div>
 
                 {/* Actions */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -454,12 +514,13 @@ export default function CaseDetailPage({ params }: PageProps) {
                     href={`/evidence/${item.id}/passport`}
                     className="flex items-center gap-1.5 rounded-md bg-[#111111] px-3 py-1.5 text-xs font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors"
                   >
-                    Passport
+                    Report
                   </Link>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         )}
       </div>
     </div>

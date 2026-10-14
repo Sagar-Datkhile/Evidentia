@@ -2,23 +2,24 @@
  * POST /api/evidence/register
  *
  * Multipart form-data endpoint for registering a new Genesis V1 evidence record.
- * 
+ *
  * Fields:
- *   file       (File)   – raw evidence binary
- *   caseId     (string) – case ID to attach evidence to
- *   title      (string) – human-readable evidence label
- *   category   (string) – EvidenceCategory enum value
- *   commitMessage (string) – mandatory audit commit message
- *   note       (string, optional) – custody notes
+ *   file          (File)   - raw evidence binary
+ *   caseId        (string) - case ID to attach evidence to
+ *   title         (string) - human-readable evidence label
+ *   category      (string) - EvidenceCategory enum value
+ *   commitMessage (string) - mandatory audit commit message
+ *   note          (string, optional) - custody notes
  *
  * Server-side workflow:
  *   1. Authenticate caller via Supabase session cookie
- *   2. Verify caller is assigned to the case (can_access_case guard)
- *   3. Receive full file bytes server-side via formData()
- *   4. AES-256-GCM encrypt file bytes
- *   5. Upload ciphertext to Supabase private-evidence storage bucket
- *   6. Compute canonical commit hash → Ed25519 system signature
- *   7. Atomic DB insert: evidence + evidence_version + evidence_commit + custody_event
+ *   2. Fetch caller profile (via authenticated client, not admin client)
+ *   3. Verify caller is assigned to the case via RLS
+ *   4. Receive full file bytes server-side via formData()
+ *   5. AES-256-GCM encrypt file bytes
+ *   6. Upload ciphertext to Supabase private-evidence storage bucket
+ *   7. Compute canonical commit hash + Ed25519 system signature
+ *   8. Atomic DB insert: evidence + evidence_version + evidence_commit + custody_event
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -27,12 +28,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { registerEvidence } from "@/lib/supabase/evidence-service";
 import { computeSha256 } from "@/lib/crypto/sha256";
 
-const VALID_CATEGORIES = ["Document", "Digital Image", "Audio", "Video", "Forensic Dump", "Other"] as const;
+const VALID_CATEGORIES = [
+  "Document",
+  "Digital Image",
+  "Audio",
+  "Video",
+  "Forensic Dump",
+  "Other",
+] as const;
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Authenticate
-    const supabase = await createServerSupabaseClient();
+    // 1. Authenticate via Supabase session cookie or Bearer token
+    const authHeader = req.headers.get("authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : undefined;
+    const supabase = await createServerSupabaseClient(bearerToken);
     const {
       data: { user },
       error: authError,
@@ -42,16 +52,79 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized: Please sign in." }, { status: 401 });
     }
 
-    // 2. Fetch caller profile
-    const adminClient = createAdminClient();
-    const { data: profile, error: profileError } = await adminClient
+    // 2. Fetch caller profile using the authenticated session client.
+    //    RLS policy "Profiles readable by authenticated users: USING(true)"
+    //    ensures any authenticated user can read profiles. Their own row is always visible.
+    //    We use maybeSingle() so a missing row returns null instead of throwing.
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("id, full_name, role, is_active")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Profile not found." }, { status: 403 });
+    if (profileError) {
+      console.error(
+        "[POST /api/evidence/register] Profile lookup error:",
+        profileError.message,
+        "code:",
+        profileError.code
+      );
+      return NextResponse.json(
+        {
+          error: `Profile lookup failed (DB code: ${profileError.code}). ${profileError.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    // 2b. If profile row is genuinely absent (e.g. trigger ran before schema was ready,
+    //     or user predates the trigger), auto-provision a minimal profile.
+    //     Never grant admin via this path — always default to 'user' role.
+    let profile = profileData;
+    if (!profile) {
+      console.warn(
+        `[POST /api/evidence/register] No profile row found for user ${user.id}. Provisioning from auth metadata.`
+      );
+      const metadata = user.user_metadata || {};
+      const fullName =
+        metadata.full_name ||
+        metadata.name ||
+        user.email?.split("@")[0] ||
+        "Judicial Officer";
+
+      // Admin client is needed for the INSERT because the anon+JWT client cannot
+      // INSERT a profile for itself (only UPDATE is permitted via the profiles RLS).
+      const adminClient = createAdminClient();
+      const { data: provisioned, error: provisionError } = await adminClient
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            email: user.email || "",
+            full_name: fullName,
+            role: "user",
+            is_active: true,
+          },
+          { onConflict: "id", ignoreDuplicates: false }
+        )
+        .select("id, full_name, role, is_active")
+        .single();
+
+      if (provisionError || !provisioned) {
+        console.error(
+          "[POST /api/evidence/register] Profile provisioning failed:",
+          provisionError?.message
+        );
+        return NextResponse.json(
+          {
+            error:
+              "Your user profile could not be found or provisioned. Please sign out and sign back in, or contact an administrator.",
+          },
+          { status: 403 }
+        );
+      }
+
+      profile = provisioned;
     }
 
     if (!profile.is_active) {
@@ -75,16 +148,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "caseId is required." }, { status: 400 });
     }
     if (!title || title.length < 2) {
-      return NextResponse.json({ error: "Title must be at least 2 characters." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Title must be at least 2 characters." },
+        { status: 400 }
+      );
     }
     if (!category || !VALID_CATEGORIES.includes(category as any)) {
-      return NextResponse.json({ error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(", ")}` }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(", ")}`,
+        },
+        { status: 400 }
+      );
     }
     if (!commitMessage || commitMessage.length < 3) {
-      return NextResponse.json({ error: "Commit message must be at least 3 characters." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Commit message must be at least 3 characters." },
+        { status: 400 }
+      );
     }
 
-    // 5. Case assignment guard (use user's session client for RLS)
+    // 5. Case authorization guard — uses the authenticated session client so RLS
+    //    enforces can_access_case() (must be admin or assigned to case)
     const { data: caseRow, error: caseCheckError } = await supabase
       .from("cases")
       .select("id")
@@ -93,16 +178,30 @@ export async function POST(req: NextRequest) {
 
     if (caseCheckError || !caseRow) {
       return NextResponse.json(
-        { error: "Case not found or you are not authorized to add evidence to this case." },
+        {
+          error:
+            "Case not found or you are not authorized to add evidence to this case.",
+        },
         { status: 403 }
       );
     }
 
     // 6. Read file bytes and compute server-side SHA-256
     const fileBuffer = await file.arrayBuffer();
-    const serverSha256 = await computeSha256(fileBuffer);
+    const serverSha256 = (await computeSha256(fileBuffer)).toLowerCase();
 
-    // 7. Read text content for diffing (text files only)
+    // 6b. Verify client digest match if provided by client preview
+    const clientSha256 = (formData.get("clientSha256") as string | null)?.trim()?.toLowerCase();
+    if (clientSha256 && clientSha256 !== serverSha256) {
+      return NextResponse.json(
+        {
+          error: `Client-Server digest mismatch: Browser computed ${clientSha256} but server verified ${serverSha256}. Upload rejected.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 7. Extract text content for diff engine (text files only, < 5 MB)
     let textContent: string | undefined;
     const isTextFile =
       file.type.startsWith("text/") ||
@@ -113,7 +212,6 @@ export async function POST(req: NextRequest) {
       file.name.endsWith(".xml");
 
     if (isTextFile && file.size < 5 * 1024 * 1024) {
-      // Only extract text content for files < 5MB
       textContent = new TextDecoder("utf-8", { fatal: false }).decode(fileBuffer);
     }
 

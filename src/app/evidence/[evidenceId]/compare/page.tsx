@@ -34,19 +34,38 @@ export default function EvidenceComparePage({ params }: PageProps) {
   const [diffResult, setDiffResult] = useState<DiffSummary | null>(null);
 
   useEffect(() => {
-    const item = evidenceStore.getEvidenceById(evidenceId);
-    setEvidenceItem(item);
-    if (item) {
-      const vList = evidenceStore.getVersionsByEvidenceId(item.id);
-      setVersions(vList);
-      if (vList.length >= 2) {
-        setBaseVerNum(vList[0].versionNumber);
-        setCompareVerNum(vList[1].versionNumber);
-      } else if (vList.length === 1) {
-        setBaseVerNum(1);
-        setCompareVerNum(1);
-      }
-    }
+    fetch(`/api/evidence/${evidenceId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setEvidenceItem(data.evidence);
+        const vList: EvidenceVersion[] = data.versions ?? [];
+        setVersions(vList);
+        if (vList.length >= 2) {
+          setBaseVerNum(vList[0].versionNumber);
+          setCompareVerNum(vList[1].versionNumber);
+        } else if (vList.length === 1) {
+          setBaseVerNum(1);
+          setCompareVerNum(1);
+        }
+      })
+      .catch(() => {
+        const item = evidenceStore.getEvidenceById(evidenceId);
+        setEvidenceItem(item);
+        if (item) {
+          const vList = evidenceStore.getVersionsByEvidenceId(item.id);
+          setVersions(vList);
+          if (vList.length >= 2) {
+            setBaseVerNum(vList[0].versionNumber);
+            setCompareVerNum(vList[1].versionNumber);
+          } else if (vList.length === 1) {
+            setBaseVerNum(1);
+            setCompareVerNum(1);
+          }
+        }
+      });
   }, [evidenceId]);
 
   const baseVersion = versions.find((v) => v.versionNumber === baseVerNum);

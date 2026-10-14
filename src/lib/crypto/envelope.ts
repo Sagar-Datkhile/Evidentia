@@ -35,7 +35,7 @@ async function deriveAesKey(secret: string): Promise<CryptoKey> {
  */
 export async function encryptPayload(
   plaintext: ArrayBuffer | Uint8Array | string,
-  secret: string = DEFAULT_KEY_SECRET
+  secret: string = process.env.EVIDENTIA_MASTER_KEY || DEFAULT_KEY_SECRET
 ): Promise<EncryptedEnvelope> {
   const key = await deriveAesKey(secret);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -77,7 +77,7 @@ export async function encryptPayload(
  */
 export async function decryptPayload(
   envelope: EncryptedEnvelope,
-  secret: string = DEFAULT_KEY_SECRET
+  secret: string = process.env.EVIDENTIA_MASTER_KEY || DEFAULT_KEY_SECRET
 ): Promise<ArrayBuffer> {
   const key = await deriveAesKey(secret);
   const iv = hexToBytes(envelope.ivHex);

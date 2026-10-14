@@ -172,6 +172,7 @@ function EvidenceNewForm() {
       formData.append("title", title.trim() || file.name);
       formData.append("category", category);
       formData.append("commitMessage", commitMessage.trim());
+      formData.append("clientSha256", calculatedHash);
       if (note.trim()) formData.append("note", note.trim());
 
       setStep("uploading");
@@ -522,7 +523,7 @@ function EvidenceNewForm() {
                 </>
               ) : (
                 <>
-                  Seal &amp; Register Evidence V1
+                  Seal or Register
                   <ArrowRight className="h-3.5 w-3.5" />
                 </>
               )}

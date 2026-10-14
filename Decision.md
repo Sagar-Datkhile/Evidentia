@@ -75,3 +75,23 @@
   5. **Protected Admin Route Handler:** Role promotion and demotion is performed exclusively via `/api/admin/roles` using the server-side service-role client after verifying the caller's active administrative session.
   6. **UI Alignment:** UI labels display `"Assigned Role"` with values `"User"` or `"Admin"`. All "Pending Verification" labels and pending-role messaging are removed. Role fields are read-only for normal users, with a dedicated role console available only to administrators.
 - **Consequences:** Provides clear and unbreakable security boundaries, removes client-side trust assumptions, ensures strict case confidentiality, and streamlines user authorization workflows.
+
+---
+
+## ADR-008: Evidence Hashing, Persistent Baselines, Envelope Decryption, and Deterministic Tamper Verification
+- **Date:** 2026-10-10
+- **Status:** Accepted
+- **Context:** Previously, the evidence registry displayed "Hash: Pending" because `listEvidenceForUser` omitted joining `evidence_versions` and the client UI attempted to resolve versions from an in-memory mock store that lacked database records. Furthermore, verification was simulated rather than downloading encrypted storage objects, decrypting ciphertext, and verifying raw-byte hashes.
+- **Decision:**
+  1. **Canonical Schema Persistence:** Store the normalized 64-character hex SHA-256 digest in `evidence_versions.file_sha256` at registration time. Disallow mock placeholders.
+  2. **Client-Server Digest Match Enforcement:** The registration endpoint `/api/evidence/register` accepts `clientSha256` from browser previews and recalculates `serverSha256` over the uploaded buffer; if any mismatch occurs, the upload is rejected with HTTP 400.
+  3. **Live Server-Side Verification Engine:** `POST /api/evidence/:id/verify` authenticates via Supabase Auth, downloads encrypted objects from the private `private-evidence` bucket, decrypts the ciphertext using AES-256-GCM and the master key, recalculates the raw-byte SHA-256 digest, and compares it against the sealed reference.
+  4. **Four-Tier Verification Matrix:** Evaluate:
+     - Tier 1: Raw-byte SHA-256 hash match (`PASS` / `FAIL`).
+     - Tier 2: Ed25519 system attestation signature verification (`PASS` / `FAIL`).
+     - Tier 3: Merkle inclusion proof status (`PASS` / `PENDING` / `FAIL`).
+     - Tier 4: Parent commit chain lineage integrity (`PASS` / `FAIL`).
+  5. **Deterministic Verdict & Persistence:** Results are persisted to `verification_reports` and logged to `custody_events` (`INTEGRITY_VERIFIED`). Where Merkle batching is pending, the system truthfully outputs `VERIFICATION_INCOMPLETE` with `check_hash: PASS` (mapped in UI to `"Hash Match"`), never fabricating an unfinalized Merkle proof.
+  6. **Unified UI Integration:** Persisted hashes and live integrity badges (`Verified`, `Hash Match`, `Mismatch Detected`, `Not Verified`) are rendered across `/evidence`, `/cases/[caseId]`, `/dashboard`, and `/evidence/[evidenceId]/passport`.
+- **Consequences:** Replaces all placeholder hashes with real persisted cryptographic digests, eliminates false assurances, satisfies judicial chain-of-custody requirements, and survives page reloads without state degradation.
+
