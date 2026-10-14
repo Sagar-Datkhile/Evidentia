@@ -20,6 +20,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { evidenceStore } from "@/lib/data/store";
+import { formatShortHash } from "@/lib/crypto/sha256";
+import { getVerificationBadgeStyle } from "@/lib/supabase/types";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 interface PageProps {
@@ -302,6 +304,7 @@ export default function CaseDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   
   const [caseItem, setCaseItem] = useState<any>(null);
+  const [evidenceList, setEvidenceList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -314,8 +317,15 @@ export default function CaseDetailPage({ params }: PageProps) {
         }
         const data = await res.json();
         setCaseItem(data.case);
+        const apiEvidence = data.evidence || [];
+        const demoEvidence = evidenceStore.getEvidenceByCaseId(resolvedParams.caseId);
+        const ids = new Set(apiEvidence.map((e: any) => e.id));
+        setEvidenceList([...apiEvidence, ...demoEvidence.filter((e) => !ids.has(e.id))]);
       } catch (err: any) {
         setErrorMsg(err.message);
+        // Fallback to demo evidence
+        const demoEvidence = evidenceStore.getEvidenceByCaseId(resolvedParams.caseId);
+        setEvidenceList(demoEvidence);
       } finally {
         setLoading(false);
       }
@@ -345,8 +355,6 @@ export default function CaseDetailPage({ params }: PageProps) {
       </div>
     );
   }
-
-  const evidenceList = evidenceStore.getEvidenceByCaseId(caseItem.id);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -427,32 +435,55 @@ export default function CaseDetailPage({ params }: PageProps) {
           </div>
         ) : (
           <div className="divide-y divide-[#F1F1F3]">
-            {evidenceList.map((item) => (
-              <div
-                key={item.id}
-                className="py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="font-mono text-xs font-bold text-[#111111]">{item.id}</span>
-                    <span className="rounded bg-[#F1F1F3] px-2 py-0.5 font-mono text-[10px] font-medium text-[#111111]">
-                      Version {item.currentVersionNumber}
-                    </span>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-[#6B6B73]">
-                      {item.category}
-                    </span>
-                    {item.isSealed && (
-                      <span className="rounded bg-amber-50 px-2 py-0.5 font-mono text-[10px] text-amber-800 border border-amber-200">
-                        SEALED
-                      </span>
-                    )}
-                  </div>
+            {evidenceList.map((item) => {
+              const hash =
+                item.v1Sha256 ||
+                item.fileSha256 ||
+                evidenceStore.getVersion(item.id, 1)?.fileSha256 ||
+                null;
+              const badge = getVerificationBadgeStyle(item.verificationStatus);
 
-                  <h3 className="font-heading text-sm font-bold text-[#111111]">{item.title}</h3>
-                  <p className="mt-1 text-xs text-[#6B6B73] font-mono">
-                    Original File: {item.originalFileName} &middot; Bucket: {item.storageBucket}
-                  </p>
-                </div>
+              return (
+                <div
+                  key={item.id}
+                  className="py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-[#111111]">{item.id}</span>
+                      <span className="rounded bg-[#F1F1F3] px-2 py-0.5 font-mono text-[10px] font-medium text-[#111111]">
+                        Version {item.currentVersionNumber}
+                      </span>
+                      <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-[#6B6B73]">
+                        {item.category}
+                      </span>
+                      {item.isSealed && (
+                        <span className="rounded bg-amber-50 px-2 py-0.5 font-mono text-[10px] text-amber-800 border border-amber-200">
+                          SEALED
+                        </span>
+                      )}
+                      <span
+                        className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-mono font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+
+                    <h3 className="font-heading text-sm font-bold text-[#111111]">{item.title}</h3>
+                    <p className="mt-1 text-xs text-[#6B6B73] font-mono">
+                      Original File: {item.originalFileName} &middot; Bucket: {item.storageBucket}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-mono text-[#6B6B73]">
+                      SHA-256:{" "}
+                      {hash ? (
+                        <span className="text-[#111111] font-semibold" title={hash}>
+                          {formatShortHash(hash, 8, 8)}
+                        </span>
+                      ) : (
+                        <span className="text-[#8E8E93] italic">Hash unavailable</span>
+                      )}
+                    </p>
+                  </div>
 
                 {/* Actions */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -483,12 +514,13 @@ export default function CaseDetailPage({ params }: PageProps) {
                     href={`/evidence/${item.id}/passport`}
                     className="flex items-center gap-1.5 rounded-md bg-[#111111] px-3 py-1.5 text-xs font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors"
                   >
-                    Passport
+                    Report
                   </Link>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         )}
       </div>
     </div>

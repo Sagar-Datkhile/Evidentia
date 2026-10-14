@@ -61,13 +61,26 @@ export default function EvidenceCreateVersionPage({ params }: PageProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const item = evidenceStore.getEvidenceById(evidenceId);
-    setEvidenceItem(item);
-    if (item) {
-      const vList = evidenceStore.getVersionsByEvidenceId(item.id);
-      setVersions(vList);
-      setParentVersionNum(item.currentVersionNumber);
-    }
+    fetch(`/api/evidence/${evidenceId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setEvidenceItem(data.evidence);
+        const vList: EvidenceVersion[] = data.versions ?? [];
+        setVersions(vList);
+        setParentVersionNum(data.evidence?.currentVersionNumber || 1);
+      })
+      .catch(() => {
+        const item = evidenceStore.getEvidenceById(evidenceId);
+        setEvidenceItem(item);
+        if (item) {
+          const vList = evidenceStore.getVersionsByEvidenceId(item.id);
+          setVersions(vList);
+          setParentVersionNum(item.currentVersionNumber);
+        }
+      });
 
     if (profile) {
       setCurrentUser(profile);

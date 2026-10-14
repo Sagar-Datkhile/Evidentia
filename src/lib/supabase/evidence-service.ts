@@ -7,8 +7,19 @@
 import { createAdminClient } from "./admin";
 import { computeCommitHash } from "../crypto/commit";
 import { signAttestation, SYSTEM_SIGNING_KEY_ID, SYSTEM_PUBLIC_KEY_HEX } from "../crypto/ed25519";
-import { encryptPayload } from "../crypto/envelope";
-import { EvidenceItem, EvidenceVersion, EvidenceCommit, Case, UserRole, normalizeRole } from "./types";
+import { encryptPayload, decryptPayload } from "../crypto/envelope";
+import {
+  EvidenceItem,
+  EvidenceVersion,
+  EvidenceCommit,
+  Case,
+  UserRole,
+  normalizeRole,
+  VerificationStatus,
+  VerificationVerdict,
+  CheckOutcome,
+  VerificationReport,
+} from "./types";
 
 export interface RegisterEvidenceParams {
   caseId: string;
@@ -312,9 +323,30 @@ export async function registerEvidence(
   return { evidence, version, commit, storagePath };
 }
 
+export function deriveVerificationStatus(
+  verdict?: string | null,
+  checkHash?: string | null
+): VerificationStatus {
+  if (!verdict) return "PENDING";
+  if (verdict === "INTEGRITY_VERIFIED") return "VERIFIED";
+  if (verdict === "CONTENT_MISMATCH") return "MISMATCH";
+  if (
+    verdict === "SIGNATURE_INVALID" ||
+    verdict === "MERKLE_PROOF_INVALID" ||
+    verdict === "COMMIT_CHAIN_BROKEN"
+  ) {
+    return "INTEGRITY_FAILURE";
+  }
+  if (verdict === "VERIFICATION_INCOMPLETE") {
+    return checkHash === "PASS" ? "HASH_MATCH" : "VERIFICATION_INCOMPLETE";
+  }
+  return "VERIFICATION_INCOMPLETE";
+}
+
 /**
  * List all evidence items accessible to the current user (via case_assignments or admin role).
  * Uses the user's own session context (anon key + JWT), so RLS is enforced.
+ * Joins evidence_versions and attaches trusted hashes and latest verification status.
  */
 export async function listEvidenceForUser(
   userSupabase: any
@@ -334,27 +366,68 @@ export async function listEvidenceForUser(
       is_sealed,
       created_by,
       created_at,
-      cases!inner(case_number)
+      cases!inner(case_number),
+      evidence_versions(id, version_number, file_sha256)
     `
     )
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Evidence list failed: ${error.message}`);
 
-  return (data ?? []).map((row: any) => ({
-    id: row.id,
-    caseId: row.case_id,
-    caseNumber: row.cases?.case_number ?? row.case_id,
-    title: row.title,
-    category: row.category,
-    incidentDate: row.incident_date,
-    currentVersionNumber: row.current_version_number,
-    storageBucket: row.storage_bucket,
-    originalFileName: row.original_file_name,
-    isSealed: row.is_sealed,
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-  }));
+  const evidenceRows = data ?? [];
+  const evidenceIds = evidenceRows.map((r: any) => r.id);
+
+  // Fetch latest verification report for each evidence item
+  const latestReportsMap: Record<string, any> = {};
+  if (evidenceIds.length > 0) {
+    try {
+      const admin = createAdminClient();
+      const { data: reports } = await admin
+        .from("verification_reports")
+        .select("id, evidence_id, verdict, check_hash, check_sig, check_merkle, check_chain, created_at")
+        .in("evidence_id", evidenceIds)
+        .order("created_at", { ascending: false });
+
+      if (reports) {
+        for (const rep of reports) {
+          if (!latestReportsMap[rep.evidence_id]) {
+            latestReportsMap[rep.evidence_id] = rep;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[listEvidenceForUser] could not load verification reports:", e);
+    }
+  }
+
+  return evidenceRows.map((row: any) => {
+    const versions = row.evidence_versions ?? [];
+    const v1 = versions.find((v: any) => v.version_number === 1);
+    const active =
+      versions.find((v: any) => v.version_number === row.current_version_number) ?? v1;
+    const rep = latestReportsMap[row.id];
+    const verificationStatus = rep
+      ? deriveVerificationStatus(rep.verdict, rep.check_hash)
+      : "PENDING";
+
+    return {
+      id: row.id,
+      caseId: row.case_id,
+      caseNumber: row.cases?.case_number ?? row.case_id,
+      title: row.title,
+      category: row.category,
+      incidentDate: row.incident_date,
+      currentVersionNumber: row.current_version_number,
+      storageBucket: row.storage_bucket,
+      originalFileName: row.original_file_name,
+      isSealed: row.is_sealed,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      v1Sha256: v1?.file_sha256 ? v1.file_sha256.trim() : null,
+      fileSha256: active?.file_sha256 ? active.file_sha256.trim() : v1?.file_sha256?.trim() ?? null,
+      verificationStatus,
+    };
+  });
 }
 
 /**
@@ -487,5 +560,198 @@ export async function getEvidenceDetail(
     listCommitsForEvidence(userSupabase, evidenceId),
   ]);
 
+  const v1 = versions.find((v) => v.versionNumber === 1);
+  const active = versions.find((v) => v.versionNumber === evidence.currentVersionNumber) ?? v1;
+
+  // Retrieve latest verification report
+  let latestVerificationStatus: VerificationStatus = "PENDING";
+  try {
+    const admin = createAdminClient();
+    const { data: latestRep } = await admin
+      .from("verification_reports")
+      .select("verdict, check_hash")
+      .eq("evidence_id", evidenceId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestRep) {
+      latestVerificationStatus = deriveVerificationStatus(latestRep.verdict, latestRep.check_hash);
+    }
+  } catch (err) {
+    console.warn("Could not fetch latest verification report for detail:", err);
+  }
+
+  evidence.v1Sha256 = v1?.fileSha256 ?? null;
+  evidence.fileSha256 = active?.fileSha256 ?? v1?.fileSha256 ?? null;
+  evidence.verificationStatus = latestVerificationStatus;
+
   return { evidence, versions, commits };
 }
+
+export interface RecordVerificationParams {
+  evidenceId: string;
+  targetVersionId?: string;
+  targetVersionNumber: number;
+  candidateSha256: string;
+  referenceSha256: string;
+  verdict: VerificationVerdict;
+  checkHash: CheckOutcome;
+  checkSig: CheckOutcome;
+  checkMerkle: CheckOutcome;
+  checkChain: CheckOutcome;
+  diffSummary?: any;
+  findings?: any[];
+  riskLevel?: string;
+  verifierId?: string;
+  verifierName?: string;
+}
+
+/**
+ * Persist an immutable verification report in Supabase and append an audit event.
+ */
+export async function recordVerificationReport(
+  params: RecordVerificationParams
+): Promise<VerificationReport> {
+  const admin = createAdminClient();
+  const timestamp = new Date().toISOString();
+
+  let targetVersionId = params.targetVersionId;
+  if (!targetVersionId) {
+    const { data: vRow } = await admin
+      .from("evidence_versions")
+      .select("id")
+      .eq("evidence_id", params.evidenceId)
+      .eq("version_number", params.targetVersionNumber)
+      .maybeSingle();
+    targetVersionId = vRow?.id;
+  }
+
+  const toDbCheck = (outcome: CheckOutcome) =>
+    outcome === "PENDING" ? "UNAVAILABLE" : outcome;
+
+  const insertPayload: Record<string, any> = {
+    evidence_id: params.evidenceId,
+    target_version_id: targetVersionId,
+    candidate_sha256: params.candidateSha256.toLowerCase(),
+    reference_sha256: params.referenceSha256.toLowerCase(),
+    verdict: params.verdict,
+    check_hash: toDbCheck(params.checkHash),
+    check_sig: toDbCheck(params.checkSig),
+    check_merkle: toDbCheck(params.checkMerkle),
+    check_chain: toDbCheck(params.checkChain),
+    risk_level: params.riskLevel ?? (params.verdict === "INTEGRITY_VERIFIED" ? "LOW" : "HIGH"),
+    findings: params.findings ?? [],
+    diff_summary: params.diffSummary ?? null,
+    verifier_id: params.verifierId ?? null,
+    created_at: timestamp,
+  };
+
+  const { data: reportRow, error: reportError } = await admin
+    .from("verification_reports")
+    .insert(insertPayload)
+    .select()
+    .single();
+
+  if (reportError) {
+    console.error("[recordVerificationReport] insert error:", reportError);
+    throw new Error(`Failed to persist verification report: ${reportError.message}`);
+  }
+
+  // Also record custody event for auditability
+  try {
+    await admin.from("custody_events").insert({
+      evidence_id: params.evidenceId,
+      event_type: "INTEGRITY_VERIFIED",
+      actor_id: params.verifierId ?? null,
+      details: {
+        verdict: params.verdict,
+        targetVersionNumber: params.targetVersionNumber,
+        candidateSha256: params.candidateSha256,
+        referenceSha256: params.referenceSha256,
+        checks: {
+          hash: params.checkHash,
+          sig: params.checkSig,
+          merkle: params.checkMerkle,
+          chain: params.checkChain,
+        },
+      },
+      occurred_at: timestamp,
+      timestamp: timestamp,
+    });
+  } catch (custodyErr) {
+    console.warn("[recordVerificationReport] custody_event insert skipped:", custodyErr);
+  }
+
+  return {
+    id: reportRow.id,
+    evidenceId: reportRow.evidence_id,
+    targetVersionId: reportRow.target_version_id,
+    targetVersionNumber: params.targetVersionNumber,
+    candidateSha256: reportRow.candidate_sha256,
+    referenceSha256: reportRow.reference_sha256,
+    verdict: reportRow.verdict as VerificationVerdict,
+    checks: {
+      hashComparison: (reportRow.check_hash ?? "NOT_RUN") as CheckOutcome,
+      commitSignature: (reportRow.check_sig ?? "NOT_RUN") as CheckOutcome,
+      merkleInclusion: (reportRow.check_merkle ?? "NOT_RUN") as CheckOutcome,
+      commitChain: (reportRow.check_chain ?? "NOT_RUN") as CheckOutcome,
+    },
+    checkHash: reportRow.check_hash,
+    checkSig: reportRow.check_sig,
+    checkMerkle: reportRow.check_merkle,
+    checkChain: reportRow.check_chain,
+    riskLevel: reportRow.risk_level,
+    findings: reportRow.findings,
+    diffSummary: reportRow.diff_summary,
+    verifierId: reportRow.verifier_id,
+    verifierName: params.verifierName,
+    createdAt: reportRow.created_at,
+  };
+}
+
+/**
+ * List historical verification reports for an evidence item.
+ */
+export async function listVerificationReportsForEvidence(
+  evidenceId: string
+): Promise<VerificationReport[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("verification_reports")
+    .select("*, profiles:verifier_id(full_name)")
+    .eq("evidence_id", evidenceId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("[listVerificationReportsForEvidence] error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    evidenceId: row.evidence_id,
+    targetVersionId: row.target_version_id,
+    targetVersionNumber: 1,
+    candidateSha256: row.candidate_sha256,
+    referenceSha256: row.reference_sha256,
+    verdict: row.verdict as VerificationVerdict,
+    checks: {
+      hashComparison: (row.check_hash ?? "NOT_RUN") as CheckOutcome,
+      commitSignature: (row.check_sig ?? "NOT_RUN") as CheckOutcome,
+      merkleInclusion: (row.check_merkle ?? "NOT_RUN") as CheckOutcome,
+      commitChain: (row.check_chain ?? "NOT_RUN") as CheckOutcome,
+    },
+    checkHash: row.check_hash,
+    checkSig: row.check_sig,
+    checkMerkle: row.check_merkle,
+    checkChain: row.check_chain,
+    riskLevel: row.risk_level,
+    findings: row.findings,
+    diffSummary: row.diff_summary,
+    verifierId: row.verifier_id,
+    verifierName: row.profiles?.full_name ?? "Authorized Verifier",
+    createdAt: row.created_at,
+  }));
+}
+

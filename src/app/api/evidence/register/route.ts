@@ -39,8 +39,10 @@ const VALID_CATEGORIES = [
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Authenticate via Supabase session cookie
-    const supabase = await createServerSupabaseClient();
+    // 1. Authenticate via Supabase session cookie or Bearer token
+    const authHeader = req.headers.get("authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : undefined;
+    const supabase = await createServerSupabaseClient(bearerToken);
     const {
       data: { user },
       error: authError,
@@ -186,7 +188,18 @@ export async function POST(req: NextRequest) {
 
     // 6. Read file bytes and compute server-side SHA-256
     const fileBuffer = await file.arrayBuffer();
-    const serverSha256 = await computeSha256(fileBuffer);
+    const serverSha256 = (await computeSha256(fileBuffer)).toLowerCase();
+
+    // 6b. Verify client digest match if provided by client preview
+    const clientSha256 = (formData.get("clientSha256") as string | null)?.trim()?.toLowerCase();
+    if (clientSha256 && clientSha256 !== serverSha256) {
+      return NextResponse.json(
+        {
+          error: `Client-Server digest mismatch: Browser computed ${clientSha256} but server verified ${serverSha256}. Upload rejected.`,
+        },
+        { status: 400 }
+      );
+    }
 
     // 7. Extract text content for diff engine (text files only, < 5 MB)
     let textContent: string | undefined;

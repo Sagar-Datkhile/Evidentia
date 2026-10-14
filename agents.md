@@ -140,12 +140,12 @@ src/
 - **Phase 0 (Repository Audit & Product Plan):** COMPLETE
 - **Phase 1 (Design System & Navigation Shell):** COMPLETE (Editorial Navbar, Hero, Auth Buttons)
 - **Phase 2 (Supabase Auth & Database Profiles):** COMPLETE (SSR Clients, Middleware, Triggers, RLS, Binary user/admin Roles, Protected Admin Promotion Handler)
-- **Phase 3 (Evidence Registration & Version Commits):** In Progress
-- **Phase 4 (Tamper Detection & Diff Engine):** Pending
+- **Phase 3 (Evidence Registration & Version Commits):** COMPLETE (Raw-byte SHA-256 persistence, AES-256-GCM envelope encryption, client/server hash validation)
+- **Phase 4 (Tamper Detection & Verification Engine):** COMPLETE (Live storage decryption, raw-byte re-computation, 4-tier check matrix, persistent verification reports, tamper detection)
 - **Phase 5 (Passkeys & Step-Up Auth):** Pending
-- **Phase 6 (Cryptographic Attestation & Merkle Engine):** Pending
-- **Phase 7 (Timeline, Custody & Passport):** Pending
-- **Phase 8 (Hardening, QA & Demo Walkthrough):** Pending
+- **Phase 6 (Cryptographic Attestation & Merkle Engine):** In Progress (Ed25519 system attestation operational; batch Merkle trees pending)
+- **Phase 7 (Timeline, Custody & Passport):** COMPLETE (Custody events, Evidence Passport report, Diff views)
+- **Phase 8 (Hardening, QA & Demo Walkthrough):** COMPLETE (30/30 E2E automated assertions passing)
 
 ---
 

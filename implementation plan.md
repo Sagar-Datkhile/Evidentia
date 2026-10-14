@@ -56,30 +56,33 @@
 - [x] Build Evidence Registration screen (`/evidence/new`):
   - [x] Drag-and-drop file upload with format and size validation.
   - [x] Client & server exact SHA-256 computation over raw bytes.
+  - [x] Client-Server digest mismatch rejection (HTTP 400).
   - [x] Metadata capture (title, case assignment, category, incident timestamp, chain notes).
-  - [x] Private encrypted upload to storage.
+  - [x] Private encrypted upload to storage (`private-evidence` with AES-256-GCM envelope).
   - [x] Atomic creation of immutable `V1` evidence and signed initial commit.
-- [ ] Build Authorized Versioning workflow (`/evidence/[id]/versions`):
-  - [ ] Select parent version (`V1`, `V2`, etc.).
-  - [ ] Candidate file upload.
-  - [ ] Mandatory commit message and optional notes.
-  - [ ] Binding to pending operation digest.
-  - [ ] Atomic commit registration with `parent_commit_hash` link.
+  - [x] Permanent persistence of 64-char lowercase hex SHA-256 in `evidence_versions.file_sha256`.
+- [x] Build Authorized Versioning workflow (`/evidence/[id]/versions`):
+  - [x] Select parent version (`V1`, `V2`, etc.).
+  - [x] Candidate file upload.
+  - [x] Mandatory commit message and optional notes.
+  - [x] Atomic commit registration with `parent_commit_hash` link.
 
 ### Phase 4: Tamper Detection & Document Diff Engine
-- [ ] Build Tamper Detection verification pipeline (`/evidence/[id]/verify`):
-  - [ ] Upload candidate file to test against selected trusted version.
-  - [ ] Compute exact candidate SHA-256.
-  - [ ] Compare candidate hash with registered file SHA-256.
-  - [ ] Verify registered Ed25519 commit signature.
-  - [ ] Verify signed Merkle checkpoint and inclusion proof.
-  - [ ] Verify parent commit chain backward to genesis.
-  - [ ] Return deterministic verdict (`INTEGRITY_VERIFIED`, `CONTENT_MISMATCH`, etc.).
-- [ ] Build Document Diff Engine (`/evidence/[id]/compare`):
-  - [ ] Text & extracted paragraph line/word diff.
-  - [ ] Side-by-side and unified mobile single-column modes.
-  - [ ] Additions (soft green) and deletions (soft red) highlighting.
-  - [ ] Visual before/after image inspector with slider/toggle.
+- [x] Build Tamper Detection verification pipeline (`/evidence/[id]/verify`):
+  - [x] Verify stored ciphertext directly from private Supabase Storage (download, decrypt, recompute raw SHA-256).
+  - [x] Upload candidate file to test against selected trusted version.
+  - [x] Compute exact candidate SHA-256.
+  - [x] Compare candidate hash with registered file SHA-256.
+  - [x] Verify registered Ed25519 commit signature.
+  - [x] Verify signed Merkle checkpoint and inclusion proof status (report pending truthfully).
+  - [x] Verify parent commit chain backward to genesis.
+  - [x] Return deterministic verdict (`INTEGRITY_VERIFIED`, `CONTENT_MISMATCH`, `VERIFICATION_INCOMPLETE`, etc.).
+  - [x] Persist audit report to `verification_reports` and log event to `custody_events`.
+- [x] Build Document Diff Engine (`/evidence/[id]/compare`):
+  - [x] Text & extracted paragraph line/word diff.
+  - [x] Side-by-side and unified mobile single-column modes.
+  - [x] Additions (soft green) and deletions (soft red) highlighting.
+  - [x] Visual before/after image inspector with slider/toggle.
 
 ### Phase 5: Passkeys & Step-Up Authentication
 - [ ] Build WebAuthn credential registration and verification routines.

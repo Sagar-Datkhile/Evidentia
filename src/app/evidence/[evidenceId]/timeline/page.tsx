@@ -422,7 +422,7 @@ export default function EvidenceTimelinePage({ params }: PageProps) {
                   className="flex items-center justify-center gap-1.5 w-full rounded-md bg-[#111111] py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors"
                 >
                   <FileCheck className="h-3.5 w-3.5" />
-                  View Full Evidence Passport
+                  View Full Evidence Report
                 </Link>
               </div>
             </div>
