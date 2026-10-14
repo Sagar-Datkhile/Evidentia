@@ -7,8 +7,10 @@
 /coverage
 
 # next.js
+.next/
 /.next/
 /out/
+*.tsbuildinfo
 
 # production
 /build
