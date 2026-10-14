@@ -23,6 +23,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body {
   background-color: var(--background);
@@ -70,6 +74,62 @@ code, pre, .font-mono {
   color: #FFFFFF;
 }
 
+/* ─── Judicory.gif & Editorial Animations ──────────────────────── */
+@keyframes judiciaryGlow {
+  0%, 100% {
+    filter: drop-shadow(0 4px 16px rgba(17, 17, 17, 0.08));
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 12px 32px rgba(17, 17, 17, 0.16));
+    transform: translateY(-4px) scale(1.008);
+  }
+}
+
+@keyframes cardPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(24px);
+    filter: blur(4px);
+  }
+  70% {
+    transform: scale(1.04) translateY(-3px);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes cardFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.judiciary-glow {
+  animation: judiciaryGlow 4s ease-in-out infinite;
+  transition: transform 0.4s ease, filter 0.4s ease;
+}
+
+.judiciary-glow:hover {
+  filter: drop-shadow(0 16px 40px rgba(17, 17, 17, 0.22));
+  transform: translateY(-6px) scale(1.02);
+}
+
+.card-pop {
+  animation: cardPopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.card-float {
+  animation: cardFloat 5s ease-in-out infinite;
+}
+
 /* Reduced motion accessibility */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -81,3 +141,4 @@ code, pre, .font-mono {
     scroll-behavior: auto !important;
   }
 }
+

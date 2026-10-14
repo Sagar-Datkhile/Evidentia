@@ -93,9 +93,7 @@ function SignInContent() {
           {/* Header & Branding */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2 mb-4 group">
-              <div className="flex h-10 w-10 items-center justify-center rounded border border-[#111111] bg-[#111111] text-[#FFFFFF] shadow-sm transition-transform group-hover:scale-105">
-                <Shield className="h-5 w-5" />
-              </div>
+              <span className="font-heading text-lg font-bold text-[#111111]">EVIDENTIA</span>
             </Link>
             <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111] sm:text-3xl">
               Welcome Back

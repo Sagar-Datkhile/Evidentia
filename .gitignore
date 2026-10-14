@@ -1,3 +1,33 @@
+<<<<<<< HEAD
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js build output
+.next/
+out/
+
+# Production
+build
+
+# Misc
+.DS_Store
+*.pem
+
+# Local env files
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+=======
 # dependencies
 /node_modules
 /.pnp
@@ -27,3 +57,4 @@ yarn-error.log*
 # local environment files with secrets
 .env*.local
 .env
+>>>>>>> 9261a6f875a3dda71a1f9e8ed95d9f91fb928cf4
